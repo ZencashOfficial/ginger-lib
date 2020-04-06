@@ -7,6 +7,9 @@ pub mod uint32;
 pub mod uint8;
 
 pub trait ToBitsGadget<ConstraintF: Field> {
+    /* Insecure but inexpensive unpacking, does not enforce the resulting Boolean vector to be
+    the integer representation of the field element, unless some
+    */
     fn to_bits<CS: ConstraintSystem<ConstraintF>>(
         &self,
         cs: CS,

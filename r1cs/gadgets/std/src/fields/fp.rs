@@ -32,12 +32,23 @@ impl<F: PrimeField> FpGadget<F> {
     }
 
     #[inline]
+    /* our inexpensive but secure unpacking function for field elements of bit length strictly
+     smaller than the bit length of the modulus.
+
+     Assumes that skip_leading_bits > 0.
+
+     DANGER: do not use with skip_leading_bits = 0. In this case, unpacking is not secure!
+     Use to_bits_strict instead.
+     */
     pub fn to_bits_with_length_restriction<CS: ConstraintSystem<F>>(
         &self,
         mut cs: CS,
         skip_leading_bits: usize,
     ) -> Result<Vec<Boolean>, SynthesisError> {
         let num_bits = F::Params::MODULUS_BITS;
+        // in order to avoid skip_leading_bits = 0 we could select num_bits as F::Params::CAPACITY, and
+        // renaming skip_leading_bits into skip_further_bits or skip_further_leading_bits
+
         let bit_values = match self.value {
             Some(value) => {
                 value.write_bits().iter().map(|b| Some(*b)).collect::<Vec<_>>()
@@ -55,6 +66,7 @@ impl<F: PrimeField> FpGadget<F> {
         let mut lc = LinearCombination::zero();
         let mut coeff = F::one();
 
+        // construct sum_{i=0}^{bitlen} b_i * 2^i as linear combination of the powers of 2.
         for bit in bits.iter().rev() {
             lc = lc + (coeff, bit.get_variable());
 
@@ -69,6 +81,14 @@ impl<F: PrimeField> FpGadget<F> {
     }
 
     #[inline]
+    /* our inexpensive but secure unpacking function for field elements of byte length strictly
+    smaller than the byte length of the modulus.
+
+    Assumes that to_skip > 0.
+
+    DANGER: do not use with to_skip = 0. In this case, unpacking is not secure!
+    Use to_bytes_strict instead.
+    */
     pub fn to_bytes_with_length_restriction<CS: ConstraintSystem<F>>(
         &self,
         mut cs: CS,
@@ -470,10 +490,18 @@ impl<F: PrimeField> EquVerdictGadget<F> for FpGadget<F> {
 impl<F: PrimeField> ToBitsGadget<F> for FpGadget<F> {
     /// Outputs the binary representation of the value in `self` in *big-endian*
     /// form.
+
+    /* Insecure unpacking, potentially allows that the vector of Booleans is not unique (they either
+    represent the field element or the field element plus the modulus).
+    DANGER: only use this when you really have thought about it!
+    */
     fn to_bits<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
         self.to_bits_with_length_restriction(&mut cs, 0)
     }
 
+    /* Secure unpacking, enforces the Booleans to be the integer bits of the field element < modulus
+    (and not the field element plus the modulus) involving an expensive comparison by value.
+    */
     fn to_bits_strict<CS: ConstraintSystem<F>>(
         &self,
         mut cs: CS,
@@ -486,10 +514,14 @@ impl<F: PrimeField> ToBitsGadget<F> for FpGadget<F> {
 }
 
 impl<F: PrimeField> FromBitsGadget<F> for FpGadget<F> {
+    /* secure packing of a bit vector into field element, assumes that the length of the vector
+    is strictly smaller than the length of the field modulus.
+
+    DANGER: for bit vector length >= modulus length this gadget is NOT secure, i.e. it does not
+    enforce that the field element has the input bits as its integer representation.
+    */
     fn from_bits<CS: ConstraintSystem<F>>(mut cs: CS, bits: &[Boolean]) -> Result<Self, SynthesisError> {
 
-        //A malicious prover may pass a bigger input so we enforce considering exactly
-        //CAPACITY bits in the linear combination calculation.
         let bits = bits.chunks(F::Params::CAPACITY as usize).next().unwrap();
 
         let mut num = Self::zero(cs.ns(|| "alloc_lc_{}"))?;
