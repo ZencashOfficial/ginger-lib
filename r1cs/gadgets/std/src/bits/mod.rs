@@ -6,22 +6,50 @@ pub mod boolean;
 pub mod uint32;
 pub mod uint8;
 
+/* Provides the interfaces for the conversion circuits ("unpacking") for
+field element gadgets into a vector of Booleans.
+*/
 pub trait ToBitsGadget<ConstraintF: Field> {
-    /* Insecure but inexpensive unpacking, does not enforce the resulting Boolean vector to be
-    the integer representation of the field element, unless some
+    /* Interface for insecure but inexpensive unpacking, does not enforce the resulting Boolean
+    vector to be the integer representation of the field element, unless some extra conditions are
+    met.
     */
     fn to_bits<CS: ConstraintSystem<ConstraintF>>(
         &self,
         cs: CS,
     ) -> Result<Vec<Boolean>, SynthesisError>;
 
-    /// Additionally checks if the produced list of booleans is 'valid'.
+    /* Interface for the secure unpacking of field elements.
+    */
     fn to_bits_strict<CS: ConstraintSystem<ConstraintF>>(
         &self,
         cs: CS,
     ) -> Result<Vec<Boolean>, SynthesisError>;
 }
 
+/* Provides the interfaces for the conversion circuits of field elements into a vectors of UInt8.
+*/
+pub trait ToBytesGadget<ConstraintF: Field> {
+    /* Interface for insecure but inexpensive unpacking, does not enforce the resulting UInt8
+    vector to be the integer representation of the field element, unless some extra conditions are
+    met.
+    */
+    fn to_bytes<CS: ConstraintSystem<ConstraintF>>(
+        &self,
+        cs: CS,
+    ) -> Result<Vec<UInt8>, SynthesisError>;
+
+    /* Interface for the secure unpacking of field elements.
+    */
+    fn to_bytes_strict<CS: ConstraintSystem<ConstraintF>>(
+        &self,
+        cs: CS,
+    ) -> Result<Vec<UInt8>, SynthesisError>;
+}
+
+/* Provides the interface for the secure conversion circuit ("packing") of a slice of Boolean
+into a field element gadget.
+*/
 pub trait FromBitsGadget<ConstraintF: Field>
     where
         Self: Sized
@@ -33,6 +61,26 @@ pub trait FromBitsGadget<ConstraintF: Field>
         bits: &[Boolean],
     ) -> Result<Self, SynthesisError>;
 }
+
+/* Provides the interface used for point compression
+*/
+pub trait ToCompressedBitsGadget<ConstraintF: Field> {
+
+    /// Enforce compression of an element through serialization of the x coordinate and storing
+    /// a sign bit for the y coordinate. For GT elements we assume x <-> c1 and y <-> c0 to avoid
+    /// confusion. When enforcing byte serialization of a field element, "x_in_field" and "y_in_field"
+    /// flags could be set in order to enforce too that their bit representation is under the
+    /// field modulus (default behaviour is both set to false).
+    fn to_compressed<CS: ConstraintSystem<ConstraintF>>(
+        &self,
+        cs: CS,
+    ) -> Result<Vec<Boolean>, SynthesisError>;
+}
+
+
+/* Implementations of the above traits (except the ToCompressedBitsGadget) for Booleans,
+slices and vectors of Booleans.
+*/
 
 impl<ConstraintF: Field> ToBitsGadget<ConstraintF> for Boolean {
     fn to_bits<CS: ConstraintSystem<ConstraintF>>(
@@ -81,6 +129,9 @@ impl<ConstraintF: Field> ToBitsGadget<ConstraintF> for Vec<Boolean> {
     }
 }
 
+/* Implementations of the above traits (except the ToCompressedBitsGadget) for UInt8,
+slices and vectors of UInt8 gadgets.
+*/
 impl<ConstraintF: Field> ToBitsGadget<ConstraintF> for [UInt8] {
     fn to_bits<CS: ConstraintSystem<ConstraintF>>(
         &self,
@@ -101,32 +152,6 @@ impl<ConstraintF: Field> ToBitsGadget<ConstraintF> for [UInt8] {
     }
 }
 
-pub trait ToBytesGadget<ConstraintF: Field> {
-    fn to_bytes<CS: ConstraintSystem<ConstraintF>>(
-        &self,
-        cs: CS,
-    ) -> Result<Vec<UInt8>, SynthesisError>;
-
-    /// Additionally checks if the produced list of booleans is 'valid'.
-    fn to_bytes_strict<CS: ConstraintSystem<ConstraintF>>(
-        &self,
-        cs: CS,
-    ) -> Result<Vec<UInt8>, SynthesisError>;
-}
-
-pub trait ToCompressedBitsGadget<ConstraintF: Field> {
-
-    /// Enforce compression of an element through serialization of the x coordinate and storing
-    /// a sign bit for the y coordinate. For GT elements we assume x <-> c1 and y <-> c0 to avoid
-    /// confusion. When enforcing byte serialization of a field element, "x_in_field" and "y_in_field"
-    /// flags could be set in order to enforce too that their bit representation is under the
-    /// field modulus (default behaviour is both set to false).
-    fn to_compressed<CS: ConstraintSystem<ConstraintF>>(
-        &self,
-        cs: CS,
-    ) -> Result<Vec<Boolean>, SynthesisError>;
-}
-
 impl<ConstraintF: Field> ToBytesGadget<ConstraintF> for [UInt8] {
     fn to_bytes<CS: ConstraintSystem<ConstraintF>>(
         &self,
@@ -143,14 +168,12 @@ impl<ConstraintF: Field> ToBytesGadget<ConstraintF> for [UInt8] {
     }
 }
 
-impl<'a, ConstraintF: Field, T: 'a + ToBytesGadget<ConstraintF>> ToBytesGadget<ConstraintF>
-    for &'a T
-{
+impl<'a, ConstraintF: Field> ToBytesGadget<ConstraintF> for &'a [UInt8] {
     fn to_bytes<CS: ConstraintSystem<ConstraintF>>(
         &self,
-        cs: CS,
+        _cs: CS,
     ) -> Result<Vec<UInt8>, SynthesisError> {
-        (*self).to_bytes(cs)
+        Ok(self.to_vec())
     }
 
     fn to_bytes_strict<CS: ConstraintSystem<ConstraintF>>(
@@ -161,12 +184,14 @@ impl<'a, ConstraintF: Field, T: 'a + ToBytesGadget<ConstraintF>> ToBytesGadget<C
     }
 }
 
-impl<'a, ConstraintF: Field> ToBytesGadget<ConstraintF> for &'a [UInt8] {
+impl<'a, ConstraintF: Field, T: 'a + ToBytesGadget<ConstraintF>> ToBytesGadget<ConstraintF>
+for &'a T
+{
     fn to_bytes<CS: ConstraintSystem<ConstraintF>>(
         &self,
-        _cs: CS,
+        cs: CS,
     ) -> Result<Vec<UInt8>, SynthesisError> {
-        Ok(self.to_vec())
+        (*self).to_bytes(cs)
     }
 
     fn to_bytes_strict<CS: ConstraintSystem<ConstraintF>>(

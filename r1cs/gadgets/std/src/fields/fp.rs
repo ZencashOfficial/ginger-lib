@@ -1,3 +1,11 @@
+/*
+Definition of the FpGadget and implementation of the following gadgets for it:
+    - FieldGadget: without sub_in_place, square, and square_in_place.
+    - AllocGadget, CloneGadget, ConstantGadget,
+    - PartialEqGadget, ConditionalEqGadget, NEqGadget,
+    - CondSelectGadget, TwoBitLookupGadget, ThreeBitNegLookupGadget,
+    - ToBitsGadget, FromBitsGadget, ToBytesGadget
+*/
 use algebra::{bytes::ToBytes, FpParameters, PrimeField};
 use r1cs_core::{
     ConstraintSystem,
@@ -15,6 +23,7 @@ pub struct FpGadget<F: PrimeField> {
     pub variable: ConstraintVar<F>,
 }
 
+// extra functions for the FpGadget
 impl<F: PrimeField> FpGadget<F> {
 
     #[inline]
@@ -22,6 +31,9 @@ impl<F: PrimeField> FpGadget<F> {
         Self::alloc(cs.ns(|| "from"), || Ok(*value)).unwrap()
     }
 
+    /* the odd test for FpGadgets, relys on a uses a rather expensive comparison in value by
+    using to_bits_strict
+    */
     #[inline]
     pub fn is_odd<CS: ConstraintSystem<F>>(
         &self,
@@ -31,8 +43,7 @@ impl<F: PrimeField> FpGadget<F> {
         Ok(bits[bits.len() - 1])
     }
 
-    #[inline]
-    /* our inexpensive but secure unpacking function for field elements of bit length strictly
+    /* An inexpensive alternative for secure unpacking of FpGadgets of bit length strictly
      smaller than the bit length of the modulus.
 
      Assumes that skip_leading_bits > 0.
@@ -40,14 +51,15 @@ impl<F: PrimeField> FpGadget<F> {
      DANGER: do not use with skip_leading_bits = 0. In this case, unpacking is not secure!
      Use to_bits_strict instead.
      */
+    #[inline]
     pub fn to_bits_with_length_restriction<CS: ConstraintSystem<F>>(
         &self,
         mut cs: CS,
         skip_leading_bits: usize,
     ) -> Result<Vec<Boolean>, SynthesisError> {
+        // in order to avoid skip_leading_bits = 0 we could select num_bits as F::Params::CAPACITY,
+        // and renaming skip_leading_bits into skip_further_bits or skip_further_leading_bits
         let num_bits = F::Params::MODULUS_BITS;
-        // in order to avoid skip_leading_bits = 0 we could select num_bits as F::Params::CAPACITY, and
-        // renaming skip_leading_bits into skip_further_bits or skip_further_leading_bits
 
         let bit_values = match self.value {
             Some(value) => {
@@ -69,7 +81,6 @@ impl<F: PrimeField> FpGadget<F> {
         // construct sum_{i=0}^{bitlen} b_i * 2^i as linear combination of the powers of 2.
         for bit in bits.iter().rev() {
             lc = lc + (coeff, bit.get_variable());
-
             coeff.double_in_place();
         }
 
@@ -80,8 +91,7 @@ impl<F: PrimeField> FpGadget<F> {
         Ok(bits.into_iter().map(Boolean::from).collect())
     }
 
-    #[inline]
-    /* our inexpensive but secure unpacking function for field elements of byte length strictly
+    /* An inexpensive but secure alternative for unpacking FpGadgets of byte length strictly
     smaller than the byte length of the modulus.
 
     Assumes that to_skip > 0.
@@ -89,6 +99,7 @@ impl<F: PrimeField> FpGadget<F> {
     DANGER: do not use with to_skip = 0. In this case, unpacking is not secure!
     Use to_bytes_strict instead.
     */
+    #[inline]
     pub fn to_bytes_with_length_restriction<CS: ConstraintSystem<F>>(
         &self,
         mut cs: CS,
@@ -135,6 +146,9 @@ impl<F: PrimeField> FpGadget<F> {
 
 }
 
+
+/* FieldGadget implementation for the FpGadget
+*/
 impl<F: PrimeField> FieldGadget<F, F> for FpGadget<F> {
     type Variable = ConstraintVar<F>;
 
@@ -166,73 +180,7 @@ impl<F: PrimeField> FieldGadget<F, F> for FpGadget<F> {
         })
     }
 
-    #[inline]
-    fn conditionally_add_constant<CS: ConstraintSystem<F>>(
-        &self,
-        mut _cs: CS,
-        bit: &Boolean,
-        coeff: F,
-    ) -> Result<Self, SynthesisError> {
-        let value = match (self.value, bit.get_value()) {
-            (Some(v), Some(b)) => Some(if b { v + &coeff } else { v }),
-            (..) => None,
-        };
-        Ok(FpGadget {
-            value,
-            variable: LC(bit.lc(CS::one(), coeff)) + &self.variable,
-        })
-    }
-
-    #[inline]
-    fn add<CS: ConstraintSystem<F>>(
-        &self,
-        mut _cs: CS,
-        other: &Self,
-    ) -> Result<Self, SynthesisError> {
-        let value = match (self.value, other.value) {
-            (Some(val1), Some(val2)) => Some(val1 + &val2),
-            (..) => None,
-        };
-
-        Ok(FpGadget {
-            value,
-            variable: &self.variable + &other.variable,
-        })
-    }
-
-    fn double<CS: ConstraintSystem<F>>(&self, _cs: CS) -> Result<Self, SynthesisError> {
-        let value = self.value.map(|val| val.double());
-        let mut variable = self.variable.clone();
-        variable.double_in_place();
-        Ok(FpGadget { value, variable })
-    }
-
-    fn double_in_place<CS: ConstraintSystem<F>>(
-        &mut self,
-        _cs: CS,
-    ) -> Result<&mut Self, SynthesisError> {
-        self.value.as_mut().map(|val| val.double_in_place());
-        self.variable.double_in_place();
-        Ok(self)
-    }
-
-    #[inline]
-    fn sub<CS: ConstraintSystem<F>>(
-        &self,
-        mut _cs: CS,
-        other: &Self,
-    ) -> Result<Self, SynthesisError> {
-        let value = match (self.value, other.value) {
-            (Some(val1), Some(val2)) => Some(val1 - &val2),
-            (..) => None,
-        };
-
-        Ok(FpGadget {
-            value,
-            variable: &self.variable - &other.variable,
-        })
-    }
-
+    // unary operations
     #[inline]
     fn negate<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Self, SynthesisError> {
         let mut result = self.clone();
@@ -251,21 +199,39 @@ impl<F: PrimeField> FieldGadget<F, F> for FpGadget<F> {
     }
 
     #[inline]
-    fn mul<CS: ConstraintSystem<F>>(
+    fn double<CS: ConstraintSystem<F>>(&self, _cs: CS) -> Result<Self, SynthesisError> {
+        let value = self.value.map(|val| val.double());
+        let mut variable = self.variable.clone();
+        variable.double_in_place();
+        Ok(FpGadget { value, variable })
+    }
+
+    #[inline]
+    fn double_in_place<CS: ConstraintSystem<F>>(
+        &mut self,
+        _cs: CS,
+    ) -> Result<&mut Self, SynthesisError> {
+        self.value.as_mut().map(|val| val.double_in_place());
+        self.variable.double_in_place();
+        Ok(self)
+    }
+
+    // addition gadgets
+    #[inline]
+    fn add<CS: ConstraintSystem<F>>(
         &self,
-        mut cs: CS,
+        mut _cs: CS,
         other: &Self,
     ) -> Result<Self, SynthesisError> {
-        let product = Self::alloc(cs.ns(|| "mul"), || {
-            Ok(self.value.get()? * &other.value.get()?)
-        })?;
-        cs.enforce(
-            || "mul_constraint",
-            |lc| &self.variable + lc,
-            |lc| &other.variable + lc,
-            |lc| &product.variable + lc,
-        );
-        Ok(product)
+        let value = match (self.value, other.value) {
+            (Some(val1), Some(val2)) => Some(val1 + &val2),
+            (..) => None,
+        };
+
+        Ok(FpGadget {
+            value,
+            variable: &self.variable + &other.variable,
+        })
     }
 
     #[inline]
@@ -292,6 +258,66 @@ impl<F: PrimeField> FieldGadget<F, F> for FpGadget<F> {
         Ok(self)
     }
 
+    /* conditional adding of a constant
+        result = self + bit * constant,
+    where bit is Boolean.
+    */
+    #[inline]
+    fn conditionally_add_constant<CS: ConstraintSystem<F>>(
+        &self,
+        mut _cs: CS,
+        bit: &Boolean,
+        coeff: F,
+    ) -> Result<Self, SynthesisError> {
+        let value = match (self.value, bit.get_value()) {
+            (Some(v), Some(b)) => Some(if b { v + &coeff } else { v }),
+            (..) => None,
+        };
+        Ok(FpGadget {
+            value,
+            variable: LC(bit.lc(CS::one(), coeff)) + &self.variable,
+        })
+    }
+
+    // substraction gadgets
+    #[inline]
+    fn sub<CS: ConstraintSystem<F>>(
+        &self,
+        mut _cs: CS,
+        other: &Self,
+    ) -> Result<Self, SynthesisError> {
+        let value = match (self.value, other.value) {
+            (Some(val1), Some(val2)) => Some(val1 - &val2),
+            (..) => None,
+        };
+
+        Ok(FpGadget {
+            value,
+            variable: &self.variable - &other.variable,
+        })
+    }
+
+    // sub_in_place not implemented
+
+    // multiplication gadgets
+    #[inline]
+    fn mul<CS: ConstraintSystem<F>>(
+        &self,
+        mut cs: CS,
+        other: &Self,
+    ) -> Result<Self, SynthesisError> {
+        let product = Self::alloc(cs.ns(|| "mul"), || {
+            Ok(self.value.get()? * &other.value.get()?)
+        })?;
+        cs.enforce(
+            || "mul_constraint",
+            |lc| &self.variable + lc,
+            |lc| &other.variable + lc,
+            |lc| &product.variable + lc,
+        );
+        Ok(product)
+    }
+
     #[inline]
     fn mul_by_constant<CS: ConstraintSystem<F>>(
         &self,
@@ -314,6 +340,8 @@ impl<F: PrimeField> FieldGadget<F, F> for FpGadget<F> {
         Ok(self)
     }
 
+    // square and square_in_place not implemented
+
     #[inline]
     fn inverse<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Self, SynthesisError> {
         let inverse = Self::alloc(cs.ns(|| "inverse"), || {
@@ -332,22 +360,7 @@ impl<F: PrimeField> FieldGadget<F, F> for FpGadget<F> {
         Ok(inverse)
     }
 
-    fn frobenius_map<CS: ConstraintSystem<F>>(
-        &self,
-        _: CS,
-        _: usize,
-    ) -> Result<Self, SynthesisError> {
-        Ok(self.clone())
-    }
-
-    fn frobenius_map_in_place<CS: ConstraintSystem<F>>(
-        &mut self,
-        _: CS,
-        _: usize,
-    ) -> Result<&mut Self, SynthesisError> {
-        Ok(self)
-    }
-
+    #[inline]
     fn mul_equals<CS: ConstraintSystem<F>>(
         &self,
         mut cs: CS,
@@ -363,6 +376,7 @@ impl<F: PrimeField> FieldGadget<F, F> for FpGadget<F> {
         Ok(())
     }
 
+    #[inline]
     fn square_equals<CS: ConstraintSystem<F>>(
         &self,
         mut cs: CS,
@@ -377,16 +391,118 @@ impl<F: PrimeField> FieldGadget<F, F> for FpGadget<F> {
         Ok(())
     }
 
-    fn cost_of_mul() -> usize {
-        1
+    #[inline]
+    fn frobenius_map<CS: ConstraintSystem<F>>(
+        &self,
+        _: CS,
+        _: usize,
+    ) -> Result<Self, SynthesisError> {
+        // as Fp is the base field of its own, the Frobenius map is trivial
+        Ok(self.clone())
     }
+
+    #[inline]
+    fn frobenius_map_in_place<CS: ConstraintSystem<F>>(
+        &mut self,
+        _: CS,
+        _: usize,
+    ) -> Result<&mut Self, SynthesisError> {
+        Ok(self)
+    }
+
+    // constraint counts
+    fn cost_of_mul() -> usize { 1 }
 
     fn cost_of_mul_equals() -> usize { 1 }
 
-    fn cost_of_inv() -> usize {
-        1
+    fn cost_of_inv() -> usize { 1 }
+}
+
+/* Alloc-, Clone and ConstantGadget for the FpGadget
+*/
+impl<F: PrimeField> AllocGadget<F, F> for FpGadget<F> {
+    #[inline]
+    fn alloc<FN, T, CS: ConstraintSystem<F>>(
+        mut cs: CS,
+        value_gen: FN,
+    ) -> Result<Self, SynthesisError>
+        where
+            FN: FnOnce() -> Result<T, SynthesisError>,
+            T: Borrow<F>,
+    {
+        let mut value = None;
+        let variable = cs.alloc(
+            || "alloc",
+            || {
+                let tmp = *value_gen()?.borrow();
+                value = Some(tmp);
+                Ok(tmp)
+            },
+        )?;
+        Ok(FpGadget {
+            value,
+            variable: Var(variable),
+        })
+    }
+
+    #[inline]
+    fn alloc_input<FN, T, CS: ConstraintSystem<F>>(
+        mut cs: CS,
+        value_gen: FN,
+    ) -> Result<Self, SynthesisError>
+        where
+            FN: FnOnce() -> Result<T, SynthesisError>,
+            T: Borrow<F>,
+    {
+        let mut value = None;
+        let variable = cs.alloc_input(
+            || "alloc",
+            || {
+                let tmp = *value_gen()?.borrow();
+                value = Some(tmp);
+                Ok(tmp)
+            },
+        )?;
+
+        Ok(FpGadget {
+            value,
+            variable: Var(variable),
+        })
     }
 }
+
+impl<F: PrimeField> Clone for FpGadget<F> {
+    fn clone(&self) -> Self {
+        Self {
+            value:    self.value.clone(),
+            variable: self.variable.clone(),
+        }
+    }
+}
+
+impl<F: PrimeField> ConstantGadget<F, F> for FpGadget<F> {
+
+    #[inline]
+    fn from_value<CS: ConstraintSystem<F>>(
+        _cs: CS,
+        value: &F,
+    ) -> Self
+    {
+        let value = *value;
+        FpGadget {
+            value: Some(value),
+            variable: ConstraintVar::<F>::from((value, CS::one())),
+        }
+    }
+
+    #[inline]
+    fn get_constant(&self) -> F {
+        self.get_value().unwrap()
+    }
+}
+
+/* relational and conditional gadgets (incl. lookup tables) for the FpGadget
+*/
 
 impl<F: PrimeField> PartialEq for FpGadget<F> {
     fn eq(&self, other: &Self) -> bool {
@@ -399,6 +515,9 @@ impl<F: PrimeField> Eq for FpGadget<F> {}
 impl<F: PrimeField> EqGadget<F> for FpGadget<F> {}
 
 impl<F: PrimeField> ConditionalEqGadget<F> for FpGadget<F> {
+    /* enforces equality of two FpGadgets x,y if the condition Boolean is true, otherwise it does
+    not enforce anything.
+    */
     #[inline]
     fn conditional_enforce_equal<CS: ConstraintSystem<F>>(
         &self,
@@ -409,6 +528,7 @@ impl<F: PrimeField> ConditionalEqGadget<F> for FpGadget<F> {
         let difference = self.sub(cs.ns(|| "difference"), other)?;
         let one = CS::one();
         let one_const = F::one();
+        // (self - other) * condition = 0
         cs.enforce(
             || "conditional_equals",
             |lc| &difference.variable + lc,
@@ -441,25 +561,32 @@ impl<F: PrimeField> NEqGadget<F> for FpGadget<F> {
 }
 
 impl<F: PrimeField> EquVerdictGadget<F> for FpGadget<F> {
+    /* outputs a Boolean verdict v which is true/false depending on whether the values x,y
+    of two FpGadgets are equal or not.
+    */
     fn enforce_verdict<CS: ConstraintSystem<F>>(
         &self,
         mut cs: CS,
         other: &Self,
     ) -> Result<Boolean, SynthesisError> {
-
-        // The Boolean we want to constrain.
+        // The Boolean 'verdict' we want to constrain.
         let v = Boolean::alloc(cs.ns(|| "alloc verdict"), || {
             let self_val = self.get_value().get()?;
             let other_val = other.get_value().get()?;
             Ok(self_val == other_val)
         })?;
-
-        // We allow the prover to choose c as he wishes when v = 1, but if c != 1/(x-y) when
-        // v = 0, then the following constraints will fail
+        /* The constraints on v,x,y are
+                0 = v * (x - y),
+            1 - v = c * (x - y).
+        If v=1 the first equation enforces x=y (otherwise it enforces nothing). The auxiliary
+        variable c is arbitrary in this case.
+        If v=0 the second equation enforces x!=y (and otherwise nothing). In this case, c is the
+        mult. inverse of x-y.
+        */
         let c = Self::alloc(cs.ns(|| "alloc c"), || {
             let v_val = v.get_value().get()?;
             if v_val {
-               Ok(F::one()) //Just one random value
+               Ok(F::one()) //Just an arbitrary value
             }
             else {
                 let self_val = self.get_value().get()?;
@@ -467,11 +594,6 @@ impl<F: PrimeField> EquVerdictGadget<F> for FpGadget<F> {
                 Ok((self_val - &other_val).inverse().get()?)
             }
         })?;
-
-        // x = first; y = second;
-        //
-        // 0 = v * (x - y)
-        // 1 - v = c * (x - y)
 
         self.conditional_enforce_equal(cs.ns(|| "0 = v * (x - y)"), other, &v)?;
 
@@ -484,104 +606,6 @@ impl<F: PrimeField> EquVerdictGadget<F> for FpGadget<F> {
         );
 
         Ok(v)
-    }
-}
-
-impl<F: PrimeField> ToBitsGadget<F> for FpGadget<F> {
-    /// Outputs the binary representation of the value in `self` in *big-endian*
-    /// form.
-
-    /* Insecure unpacking, potentially allows that the vector of Booleans is not unique (they either
-    represent the field element or the field element plus the modulus).
-    DANGER: only use this when you really have thought about it!
-    */
-    fn to_bits<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
-        self.to_bits_with_length_restriction(&mut cs, 0)
-    }
-
-    /* Secure unpacking, enforces the Booleans to be the integer bits of the field element < modulus
-    (and not the field element plus the modulus) involving an expensive comparison by value.
-    */
-    fn to_bits_strict<CS: ConstraintSystem<F>>(
-        &self,
-        mut cs: CS,
-    ) -> Result<Vec<Boolean>, SynthesisError> {
-        let bits = self.to_bits(&mut cs)?;
-        Boolean::enforce_in_field::<_, _, F>(&mut cs, &bits)?;
-
-        Ok(bits)
-    }
-}
-
-impl<F: PrimeField> FromBitsGadget<F> for FpGadget<F> {
-    /* secure packing of a bit vector into field element, assumes that the length of the vector
-    is strictly smaller than the length of the field modulus.
-
-    DANGER: for bit vector length >= modulus length this gadget is NOT secure, i.e. it does not
-    enforce that the field element has the input bits as its integer representation.
-    */
-    fn from_bits<CS: ConstraintSystem<F>>(mut cs: CS, bits: &[Boolean]) -> Result<Self, SynthesisError> {
-
-        let bits = bits.chunks(F::Params::CAPACITY as usize).next().unwrap();
-
-        let mut num = Self::zero(cs.ns(|| "alloc_lc_{}"))?;
-        let mut coeff = F::one();
-
-        // Need to reverse in order to reconstruct the field element, because we
-        // assume having a *big_endian* bit representation of `Self`.
-        for (j, bit) in bits.iter().rev().enumerate() {
-
-            // Use a support FpGadget to hold the linear combination (needed because
-            // the allocated bit won't have a value until proving time.
-            num = num.conditionally_add_constant(
-                cs.ns(|| format!("add_bit_{}", j)),
-                bit,
-                coeff,
-            )?;
-
-            coeff.double_in_place();
-        }
-
-        //Alloc the field gadget with the value resulting from bit linear combination
-        let variable = Self::alloc(
-            cs.ns(|| "variable"),
-            || {
-                let value = num.get_value().get()?;
-                Ok(value)
-            }
-        )?;
-
-        // num * 1 = variable
-        cs.enforce(
-            || "packing constraint",
-            |lc| lc,
-            |lc| lc,
-            |lc| &variable.variable - &num.variable + lc,
-        );
-        Ok(variable)
-    }
-}
-
-impl<F: PrimeField> ToBytesGadget<F> for FpGadget<F> {
-    fn to_bytes<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
-        self.to_bytes_with_length_restriction(&mut cs, 0)
-    }
-
-    fn to_bytes_strict<CS: ConstraintSystem<F>>(
-        &self,
-        mut cs: CS,
-    ) -> Result<Vec<UInt8>, SynthesisError> {
-        let bytes = self.to_bytes(&mut cs)?;
-        Boolean::enforce_in_field::<_, _, F>(
-            &mut cs,
-            &bytes.iter()
-                .flat_map(|byte_gadget| byte_gadget.into_bits_le())
-                // This reverse maps the bits into big-endian form, as required by `enforce_in_field`.
-                .rev()
-                .collect::<Vec<_>>(),
-        )?;
-
-        Ok(bytes)
     }
 }
 
@@ -605,10 +629,9 @@ impl<F: PrimeField> CondSelectGadget<F> for FpGadget<F> {
                     .and_then(|cond| if cond { first } else { second }.get_value())
                     .get()
             })?;
-            // a = self; b = other; c = cond;
+            // a = self; b = other; c = cond, r = result;
             //
-            // r = c * a + (1  - c) * b
-            // r = b + c * (a - b)
+            // r = c * a + (1  - c) * b, or as rank 1 constraint
             // c * (a - b) = r - b
             let one = CS::one();
             cs.enforce(
@@ -626,8 +649,10 @@ impl<F: PrimeField> CondSelectGadget<F> for FpGadget<F> {
         1
     }
 }
-/// Uses two bits to perform a lookup into a table
-/// `b` is little-endian: `b[0]` is LSB.
+
+/* Two bit lookup circuit, chooses c[i], i=0,..,3, according to i = b[1]*2 + b[0] given
+by two Booleans b[0], b[1].
+*/
 impl<F: PrimeField> TwoBitLookupGadget<F> for FpGadget<F> {
     type TableConstant = F;
     fn two_bit_lookup<CS: ConstraintSystem<F>>(
@@ -646,6 +671,11 @@ impl<F: PrimeField> TwoBitLookupGadget<F> for FpGadget<F> {
                 (true, true) => Ok(c[3]),
             }
         })?;
+        /* explicit lookup formula for table c = c[0],..,c[3]
+            result = (1-b1) * [(1-b0)*c0 + b0*c1] + b1 * [(1-b0)*c2 + b0*c3],
+        or as single rank 1 constraint
+           (c0-c1-c2+c3) * b0 * b1 = result - [c0 + (c1-c0)*b0 + (c2-c0)*b1]
+        */
         let one = CS::one();
         cs.enforce(
             || "Enforce lookup",
@@ -657,6 +687,10 @@ impl<F: PrimeField> TwoBitLookupGadget<F> for FpGadget<F> {
         Ok(result)
     }
 
+    /* low level version of two bit lookup table, outsources the quadratic term b0 * b1 in
+        (c0-c1-c2+c3) * b0 * b1 = result - [c0 + (c1-c0)*b0 + (c2-c0)*b1]
+    to an input Boolean 'precomp'.
+    */
     fn two_bit_lookup_lc<CS: ConstraintSystem<F>>
     (   mut cs: CS,
         precomp: &Boolean,
@@ -686,6 +720,12 @@ impl<F: PrimeField> TwoBitLookupGadget<F> for FpGadget<F> {
     }
 }
 
+/* Three bit look up circuit combining a two bit table and conditional negation.
+Outputs
+    c = (-1)^b[2] * c[i] = (-1)^b[2] * c[b[1]*2 + b[0]]
+according to the bits b[0],b[1],b[2].
+As two_bit_lookup_lc, the quadratic term b[0]*[1] is outsourced to the input Boolean b0b1.
+*/
 impl<F: PrimeField> ThreeBitCondNegLookupGadget<F> for FpGadget<F> {
     type TableConstant = F;
 
@@ -713,10 +753,14 @@ impl<F: PrimeField> ThreeBitCondNegLookupGadget<F> for FpGadget<F> {
         })?;
 
         let one = CS::one();
+        // y_lc = [c0 + (c1-c0)*b0 + (c2-c0)*b1] + (c0-c1-c2+c3) * b0b1
         let y_lc = b0b1.lc(one, c[3] - &c[2] - &c[1] + &c[0])
             + b[0].lc(one, c[1] - &c[0])
             + b[1].lc(one, c[2] - &c[0])
             + (c[0], one);
+        // result = (1-b[2]) * y_lc  - b[2] * y_lc,
+        // or as single rank 1 constraint
+        // 2*b[2]*y_lc = y_lc - result
         cs.enforce(
             || "Enforce lookup",
             |_| y_lc.clone() + y_lc.clone(),
@@ -728,87 +772,111 @@ impl<F: PrimeField> ThreeBitCondNegLookupGadget<F> for FpGadget<F> {
     }
 
     fn cost() -> usize {
-        2
+        2 // shouldn't be that 1 as quadratic term b0b1 is outsourced?
     }
 }
 
-impl<F: PrimeField> Clone for FpGadget<F> {
-    fn clone(&self) -> Self {
-        Self {
-            value:    self.value.clone(),
-            variable: self.variable.clone(),
-        }
-    }
-}
+/* Packing and unpacking gadgets for FpGadget
+*/
+impl<F: PrimeField> ToBitsGadget<F> for FpGadget<F> {
+    /// Outputs the binary representation of the value in `self` in *big-endian*
+    /// form.
 
-impl<F: PrimeField> AllocGadget<F, F> for FpGadget<F> {
-    #[inline]
-    fn alloc<FN, T, CS: ConstraintSystem<F>>(
+    /* Insecure unpacking, potentially allows that the vector of Booleans is not unique (they either
+    represent the field element or the field element plus the modulus).
+    DANGER: only use this when you really have thought about it!
+    */
+    fn to_bits<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+        self.to_bits_with_length_restriction(&mut cs, 0)
+    }
+
+    /* Secure unpacking, enforces the Booleans to be the integer bits of the field element < modulus
+    (and not the field element plus the modulus) involving an expensive comparison by value.
+    */
+    fn to_bits_strict<CS: ConstraintSystem<F>>(
+        &self,
         mut cs: CS,
-        value_gen: FN,
-    ) -> Result<Self, SynthesisError>
-    where
-        FN: FnOnce() -> Result<T, SynthesisError>,
-        T: Borrow<F>,
-    {
-        let mut value = None;
-        let variable = cs.alloc(
-            || "alloc",
-            || {
-                let tmp = *value_gen()?.borrow();
-                value = Some(tmp);
-                Ok(tmp)
-            },
-        )?;
-        Ok(FpGadget {
-            value,
-            variable: Var(variable),
-        })
-    }
+    ) -> Result<Vec<Boolean>, SynthesisError> {
+        let bits = self.to_bits(&mut cs)?;
+        Boolean::enforce_in_field::<_, _, F>(&mut cs, &bits)?;
 
-    #[inline]
-    fn alloc_input<FN, T, CS: ConstraintSystem<F>>(
-        mut cs: CS,
-        value_gen: FN,
-    ) -> Result<Self, SynthesisError>
-    where
-        FN: FnOnce() -> Result<T, SynthesisError>,
-        T: Borrow<F>,
-    {
-        let mut value = None;
-        let variable = cs.alloc_input(
-            || "alloc",
-            || {
-                let tmp = *value_gen()?.borrow();
-                value = Some(tmp);
-                Ok(tmp)
-            },
-        )?;
-
-        Ok(FpGadget {
-            value,
-            variable: Var(variable),
-        })
+        Ok(bits)
     }
 }
 
-impl<F: PrimeField> ConstantGadget<F, F> for FpGadget<F> {
+impl<F: PrimeField> FromBitsGadget<F> for FpGadget<F> {
+    /* Secure packing of a Boolean vector into an FpGadget, assumes that the length of the vector
+    is strictly smaller than the length of the field modulus.
 
-    #[inline]
-    fn from_value<CS: ConstraintSystem<F>>(
-        _cs: CS,
-        value: &F,
-    ) -> Self
-    {
-        let value = *value;
-        FpGadget {
-            value: Some(value),
-            variable: ConstraintVar::<F>::from((value, CS::one())),
+    DANGER: for Boolean vector length >= modulus length this circuit is NOT secure, i.e. it does not
+    enforce that the field element has the input bits as its integer representation.
+    */
+    fn from_bits<CS: ConstraintSystem<F>>(mut cs: CS, bits: &[Boolean]) -> Result<Self, SynthesisError> {
+        // bits is assumed to be in big endian order
+        let bits = bits.chunks(F::Params::CAPACITY as usize).next().unwrap();
+
+        let mut num = Self::zero(cs.ns(|| "alloc_lc_{}"))?;
+        let mut coeff = F::one();
+
+        // Need to reverse in order to reconstruct the field element, because we
+        // assume having a *big_endian* bit representation of `Self`.
+        for (j, bit) in bits.iter().rev().enumerate() {
+
+            // Use a support FpGadget to hold the linear combination (needed because
+            // the allocated bit won't have a value until proving time.
+            num = num.conditionally_add_constant(
+                cs.ns(|| format!("add_bit_{}", j)),
+                bit,
+                coeff,
+            )?;
+
+            coeff.double_in_place();
         }
-    }
 
-    #[inline]
-    fn get_constant(&self) -> F {
-        self.get_value().unwrap()
+        // Alloc the field gadget with the value resulting from bit linear combination
+        let variable = Self::alloc(
+            cs.ns(|| "variable"),
+            || {
+                let value = num.get_value().get()?;
+                Ok(value)
+            }
+        )?;
+
+        // num * 1 = variable
+        cs.enforce(
+            || "packing constraint",
+            |lc| lc,
+            |lc| lc,
+            |lc| &variable.variable - &num.variable + lc,
+        );
+        Ok(variable)
     }
 }
+
+impl<F: PrimeField> ToBytesGadget<F> for FpGadget<F> {
+    // the insecure unpacking uses to_bytes_with_length_restriction with to_skip = 0
+    fn to_bytes<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        self.to_bytes_with_length_restriction(&mut cs, 0)
+    }
+
+    // the secure unpacking function using the rather expensive Boolean::enforce_in_field
+    // circuit.
+    fn to_bytes_strict<CS: ConstraintSystem<F>>(
+        &self,
+        mut cs: CS,
+    ) -> Result<Vec<UInt8>, SynthesisError> {
+        let bytes = self.to_bytes(&mut cs)?;
+        Boolean::enforce_in_field::<_, _, F>(
+            &mut cs,
+            &bytes.iter()
+                .flat_map(|byte_gadget| byte_gadget.into_bits_le())
+                // This reverse maps the bits into big-endian form, as required by `enforce_in_field`.
+                .rev()
+                .collect::<Vec<_>>(),
+        )?;
+
+        Ok(bytes)
+    }
+}
+
+

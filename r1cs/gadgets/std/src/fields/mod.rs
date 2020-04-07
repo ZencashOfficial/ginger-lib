@@ -20,6 +20,13 @@ pub mod jubjub;
 pub mod mnt4753;
 pub mod mnt6753;
 
+/* FieldGadget trait for the prime field and extension field gadgets.
+Defines the interfaces for
+  - arithmetic functions on field gadgets,
+  - the Frobenius map (for field extensions),
+  - some auxiliary useful functions such as conditional_add_constant, mul_equ
+and gives a generic implementation of the square and multiply circuit. 
+*/
 pub trait FieldGadget<F: Field, ConstraintF: Field>:
     Sized
     + Clone
@@ -45,57 +52,14 @@ pub trait FieldGadget<F: Field, ConstraintF: Field>:
 
     fn one<CS: ConstraintSystem<ConstraintF>>(_: CS) -> Result<Self, SynthesisError>;
 
-    fn conditionally_add_constant<CS: ConstraintSystem<ConstraintF>>(
-        &self,
-        _: CS,
-        _: &Boolean,
-        _: F,
-    ) -> Result<Self, SynthesisError>;
+    /*
+    unary operations gadgets
+    */
 
-    fn add<CS: ConstraintSystem<ConstraintF>>(
-        &self,
-        _: CS,
-        _: &Self,
-    ) -> Result<Self, SynthesisError>;
-
-    fn add_in_place<CS: ConstraintSystem<ConstraintF>>(
-        &mut self,
-        cs: CS,
-        other: &Self,
-    ) -> Result<&mut Self, SynthesisError> {
-        *self = self.add(cs, other)?;
-        Ok(self)
-    }
-
-    fn double<CS: ConstraintSystem<ConstraintF>>(&self, cs: CS) -> Result<Self, SynthesisError> {
-        self.add(cs, &self)
-    }
-
-    fn double_in_place<CS: ConstraintSystem<ConstraintF>>(
-        &mut self,
-        cs: CS,
-    ) -> Result<&mut Self, SynthesisError> {
-        *self = self.double(cs)?;
-        Ok(self)
-    }
-
-    fn sub<CS: ConstraintSystem<ConstraintF>>(
-        &self,
-        _: CS,
-        _: &Self,
-    ) -> Result<Self, SynthesisError>;
-
-    fn sub_in_place<CS: ConstraintSystem<ConstraintF>>(
-        &mut self,
-        cs: CS,
-        other: &Self,
-    ) -> Result<&mut Self, SynthesisError> {
-        *self = self.sub(cs, other)?;
-        Ok(self)
-    }
-
+    // supposed to allocate an output element and enforce it to be minus input.
     fn negate<CS: ConstraintSystem<ConstraintF>>(&self, _: CS) -> Result<Self, SynthesisError>;
 
+    // replaces self by minus self
     #[inline]
     fn negate_in_place<CS: ConstraintSystem<ConstraintF>>(
         &mut self,
@@ -105,12 +69,123 @@ pub trait FieldGadget<F: Field, ConstraintF: Field>:
         Ok(self)
     }
 
+    //suppose to allocate an output element and enforce it to be the double of the input.
+    fn double<CS: ConstraintSystem<ConstraintF>>(&self, cs: CS) -> Result<Self, SynthesisError> {
+        self.add(cs, &self)
+    }
+
+    // replaces self by it's double
+    #[inline]
+    fn double_in_place<CS: ConstraintSystem<ConstraintF>>(
+        &mut self,
+        cs: CS,
+    ) -> Result<&mut Self, SynthesisError> {
+        *self = self.double(cs)?;
+        Ok(self)
+    }
+
+    /*
+    addition gadgets
+    */
+
+    // supposed to allocate an output element and enforce it to be the sum of the inputs
+    fn add<CS: ConstraintSystem<ConstraintF>>(
+        &self,
+        _: CS,
+        _: &Self,
+    ) -> Result<Self, SynthesisError>;
+
+    // replaces self by the sum of self and other
+    #[inline]
+    fn add_in_place<CS: ConstraintSystem<ConstraintF>>(
+        &mut self,
+        cs: CS,
+        other: &Self,
+    ) -> Result<&mut Self, SynthesisError> {
+        *self = self.add(cs, other)?;
+        Ok(self)
+    }
+
+    // supposed to allocate a field gadget which is
+    fn add_constant<CS: ConstraintSystem<ConstraintF>>(
+        &self,
+        _: CS,
+        _: &F,
+    ) -> Result<Self, SynthesisError>;
+
+    // replaces self by other + self
+    #[inline]
+    fn add_constant_in_place<CS: ConstraintSystem<ConstraintF>>(
+        &mut self,
+        cs: CS,
+        other: &F,
+    ) -> Result<&mut Self, SynthesisError> {
+        *self = self.add_constant(cs, other)?;
+        Ok(self)
+    }
+
+    fn conditionally_add_constant<CS: ConstraintSystem<ConstraintF>>(
+        &self,
+        _: CS,
+        _: &Boolean,
+        _: F,
+    ) -> Result<Self, SynthesisError>;
+
+    /*
+    substraction gadgets
+    */
+
+    // supposed to allocate an output element and enforce it to be the difference of the inputs.
+    fn sub<CS: ConstraintSystem<ConstraintF>>(
+        &self,
+        _: CS,
+        _: &Self,
+    ) -> Result<Self, SynthesisError>;
+
+    // replaces self by self - other
+    #[inline]
+    fn sub_in_place<CS: ConstraintSystem<ConstraintF>>(
+        &mut self,
+        cs: CS,
+        other: &Self,
+    ) -> Result<&mut Self, SynthesisError> {
+        *self = self.sub(cs, other)?;
+        Ok(self)
+    }
+
+    // supposed to allocate an output element and enforce it to be input - constant
+    #[inline]
+    fn sub_constant<CS: ConstraintSystem<ConstraintF>>(
+        &self,
+        cs: CS,
+        fe: &F,
+    ) -> Result<Self, SynthesisError> {
+        self.add_constant(cs, &(-(*fe)))
+    }
+
+    // replaces self by self - other
+    #[inline]
+    fn sub_constant_in_place<CS: ConstraintSystem<ConstraintF>>(
+        &mut self,
+        cs: CS,
+        other: &F,
+    ) -> Result<&mut Self, SynthesisError> {
+        self.add_constant_in_place(cs, &(-(*other)))
+    }
+
+    /*
+    multiplication gadgets
+    */
+
+    // supposed allocate an output element and enforce it to be the product of the inputs
     fn mul<CS: ConstraintSystem<ConstraintF>>(
         &self,
         _: CS,
         _: &Self,
     ) -> Result<Self, SynthesisError>;
 
+    // replaces self by the product of self * other
+    #[inline]
     fn mul_in_place<CS: ConstraintSystem<ConstraintF>>(
         &mut self,
         cs: CS,
@@ -120,10 +195,31 @@ pub trait FieldGadget<F: Field, ConstraintF: Field>:
         Ok(self)
     }
 
+    // supposed to allocate an output element and enforce it to be the product of input times constant
+    fn mul_by_constant<CS: ConstraintSystem<ConstraintF>>(
+        &self,
+        _: CS,
+        _: &F,
+    ) -> Result<Self, SynthesisError>;
+
+    // replaces self by self * constant
+    #[inline]
+    fn mul_by_constant_in_place<CS: ConstraintSystem<ConstraintF>>(
+        &mut self,
+        cs: CS,
+        other: &F,
+    ) -> Result<&mut Self, SynthesisError> {
+        *self = self.mul_by_constant(cs, other)?;
+        Ok(self)
+    }
+
+    // supposed to allocate an output element and enforce it to be the square of the input
     fn square<CS: ConstraintSystem<ConstraintF>>(&self, cs: CS) -> Result<Self, SynthesisError> {
         self.mul(cs, &self)
     }
 
+    // replaces self by self squared
+    #[inline]
     fn square_in_place<CS: ConstraintSystem<ConstraintF>>(
         &mut self,
         cs: CS,
@@ -132,6 +228,11 @@ pub trait FieldGadget<F: Field, ConstraintF: Field>:
         Ok(self)
     }
 
+    // suppose to allocate an output element and enforce it to be the mult. inverse of the input
+    fn inverse<CS: ConstraintSystem<ConstraintF>>(&self, _: CS) -> Result<Self, SynthesisError>;
+
+    // enforces that result = self * other
+    #[inline]
     fn mul_equals<CS: ConstraintSystem<ConstraintF>>(
         &self,
         mut cs: CS,
@@ -142,6 +243,8 @@ pub trait FieldGadget<F: Field, ConstraintF: Field>:
         result.enforce_equal(&mut cs.ns(|| "test_equals"), &actual_result)
     }
 
+    // enforces that result = self^2
+    #[inline]
     fn square_equals<CS: ConstraintSystem<ConstraintF>>(
         &self,
         mut cs: CS,
@@ -151,71 +254,7 @@ pub trait FieldGadget<F: Field, ConstraintF: Field>:
         result.enforce_equal(&mut cs.ns(|| "test_equals"), &actual_result)
     }
 
-    fn add_constant<CS: ConstraintSystem<ConstraintF>>(
-        &self,
-        _: CS,
-        _: &F,
-    ) -> Result<Self, SynthesisError>;
-
-    fn add_constant_in_place<CS: ConstraintSystem<ConstraintF>>(
-        &mut self,
-        cs: CS,
-        other: &F,
-    ) -> Result<&mut Self, SynthesisError> {
-        *self = self.add_constant(cs, other)?;
-        Ok(self)
-    }
-
-    fn sub_constant<CS: ConstraintSystem<ConstraintF>>(
-        &self,
-        cs: CS,
-        fe: &F,
-    ) -> Result<Self, SynthesisError> {
-        self.add_constant(cs, &(-(*fe)))
-    }
-
-    fn sub_constant_in_place<CS: ConstraintSystem<ConstraintF>>(
-        &mut self,
-        cs: CS,
-        other: &F,
-    ) -> Result<&mut Self, SynthesisError> {
-        self.add_constant_in_place(cs, &(-(*other)))
-    }
-
-    fn mul_by_constant<CS: ConstraintSystem<ConstraintF>>(
-        &self,
-        _: CS,
-        _: &F,
-    ) -> Result<Self, SynthesisError>;
-
-    fn mul_by_constant_in_place<CS: ConstraintSystem<ConstraintF>>(
-        &mut self,
-        cs: CS,
-        other: &F,
-    ) -> Result<&mut Self, SynthesisError> {
-        *self = self.mul_by_constant(cs, other)?;
-        Ok(self)
-    }
-
-    fn inverse<CS: ConstraintSystem<ConstraintF>>(&self, _: CS) -> Result<Self, SynthesisError>;
-
-    fn frobenius_map<CS: ConstraintSystem<ConstraintF>>(
-        &self,
-        _: CS,
-        power: usize,
-    ) -> Result<Self, SynthesisError>;
-
-    fn frobenius_map_in_place<CS: ConstraintSystem<ConstraintF>>(
-        &mut self,
-        cs: CS,
-        power: usize,
-    ) -> Result<&mut Self, SynthesisError> {
-        *self = self.frobenius_map(cs, power)?;
-        Ok(self)
-    }
-
-    /// Accepts as input a list of bits which, when interpreted in big-endian
-    /// form, are a scalar.
+    // Binary exponentiation via square and multiply, the exponent is given as a big endian list of Boolean
     #[inline]
     fn pow<CS: ConstraintSystem<ConstraintF>>(
         &self,
@@ -236,11 +275,36 @@ pub trait FieldGadget<F: Field, ConstraintF: Field>:
         Ok(res)
     }
 
+    // supposed to allocate an output element and enforce it to be the Frobenius map of the input
+    fn frobenius_map<CS: ConstraintSystem<ConstraintF>>(
+        &self,
+        _: CS,
+        power: usize,
+    ) -> Result<Self, SynthesisError>;
+
+    // replaces self by Frobenius map of self
+    #[inline]
+    fn frobenius_map_in_place<CS: ConstraintSystem<ConstraintF>>(
+        &mut self,
+        cs: CS,
+        power: usize,
+    ) -> Result<&mut Self, SynthesisError> {
+        *self = self.frobenius_map(cs, power)?;
+        Ok(self)
+    }
+
+    // The interfaces for counting constraints. All other costs are derived from these.
+
     fn cost_of_mul() -> usize;
+
+    fn cost_of_squ() -> usize;
+
+    fn cost_of_inv() -> usize;
 
     fn cost_of_mul_equals() -> usize;
 
-    fn cost_of_inv() -> usize;
+    fn cost_of_squ_equals() -> usize;
+
 }
 
 #[cfg(test)]
