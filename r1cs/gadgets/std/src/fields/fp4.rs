@@ -1,10 +1,12 @@
 /*
 Definition of the degree 4 extension field gadget Fp4Gadget, and implementation of the
 following gadgets for it:
-    - FieldGadget: without double, double_in_place, sub_in_place, square_in_place, mul_by_constant_in_place
-        and square_equals.
+    - FieldGadget:
+        mul, inverse and mul_equ gadget use Karatsuba multiplication
+        square gadget can be improved by one constraint as in Fp2Gadget
         NEqGadget has to be checked if it meets it's purpose by demanding all three components to
         be different.
+    - cyclotomic operations gadgets as used by the Ate pairing gadget
     - AllocGadget, CloneGadget, ConstantGadget,
     - PartialEqGadget, ConditionalEqGadget, NEqGadget,
     - CondSelectGadget, TwoBitLookupGadget, ThreeBitNegLookupGadget,
@@ -212,28 +214,8 @@ impl<P, ConstraintF: PrimeField + SquareRootField> FieldGadget<Fp4<P>, Constrain
         Ok(Self::new(c0, c1))
     }
 
-    /* unary operation gadgets
-    */
-    #[inline]
-    fn negate<CS: ConstraintSystem<ConstraintF>>(&self, mut cs: CS) -> Result<Self, SynthesisError> {
-        let c0 = self.c0.negate(&mut cs.ns(|| "negate c0"))?;
-        let c1 = self.c1.negate(&mut cs.ns(|| "negate c1"))?;
-        Ok(Self::new(c0, c1))
-    }
-
-    #[inline]
-    fn negate_in_place<CS: ConstraintSystem<ConstraintF>>(
-        &mut self,
-        mut cs: CS,
-    ) -> Result<&mut Self, SynthesisError> {
-        self.c0.negate_in_place(&mut cs.ns(|| "negate c0"))?;
-        self.c1.negate_in_place(&mut cs.ns(|| "negate c1"))?;
-        Ok(self)
-    }
-
-    // fn double and double_in_place not implemented
-
-    /* addition gadgets
+    /*
+    addition gadgets
     */
 
     #[inline]
@@ -285,7 +267,8 @@ impl<P, ConstraintF: PrimeField + SquareRootField> FieldGadget<Fp4<P>, Constrain
         Ok(Self::new(c0, c1))
     }
 
-    /* substraction gadgets
+    /*
+    substraction gadgets
     */
 
     #[inline]
@@ -299,10 +282,27 @@ impl<P, ConstraintF: PrimeField + SquareRootField> FieldGadget<Fp4<P>, Constrain
         Ok(Self::new(c0, c1))
     }
 
-    // fn sub_in_place not implemented
+    #[inline]
+    fn negate<CS: ConstraintSystem<ConstraintF>>(&self, mut cs: CS) -> Result<Self, SynthesisError> {
+        let c0 = self.c0.negate(&mut cs.ns(|| "negate c0"))?;
+        let c1 = self.c1.negate(&mut cs.ns(|| "negate c1"))?;
+        Ok(Self::new(c0, c1))
+    }
 
-    /* multiplication gadgets
+    #[inline]
+    fn negate_in_place<CS: ConstraintSystem<ConstraintF>>(
+        &mut self,
+        mut cs: CS,
+    ) -> Result<&mut Self, SynthesisError> {
+        self.c0.negate_in_place(&mut cs.ns(|| "negate c0"))?;
+        self.c1.negate_in_place(&mut cs.ns(|| "negate c1"))?;
+        Ok(self)
+    }
+
+    /*
+    multiplication gadgets
     */
+
     #[inline]
     fn mul<CS: ConstraintSystem<ConstraintF>>(
         &self,
@@ -379,6 +379,7 @@ impl<P, ConstraintF: PrimeField + SquareRootField> FieldGadget<Fp4<P>, Constrain
         Ok(Self::new(c0, c1))
     }
 
+    // can be improved by one constraint over Fp2 by using the same trick as for the Fp2Gadget
     #[inline]
     fn square<CS: ConstraintSystem<ConstraintF>>(&self, mut cs: CS) -> Result<Self, SynthesisError> {
         /*
@@ -416,8 +417,8 @@ impl<P, ConstraintF: PrimeField + SquareRootField> FieldGadget<Fp4<P>, Constrain
         Ok(Self::new(c0, c1))
     }
 
-    // fn square_in_place not implemented
-
+    // now that the patched code does not save any constraints:
+    // why not replace Karatsuba code by simple call to mul_equals?
     #[inline]
     fn inverse<CS: ConstraintSystem<ConstraintF>>(&self, mut cs: CS) -> Result<Self, SynthesisError> {
         let inverse = Self::alloc(&mut cs.ns(|| "alloc inverse"), || {
@@ -459,6 +460,7 @@ impl<P, ConstraintF: PrimeField + SquareRootField> FieldGadget<Fp4<P>, Constrain
         Ok(inverse)
     }
 
+    // does not save any constraints over default implementation?
     fn mul_equals<CS: ConstraintSystem<ConstraintF>>(
         &self,
         mut cs: CS,
@@ -555,7 +557,8 @@ impl<P, ConstraintF: PrimeField + SquareRootField> FieldGadget<Fp4<P>, Constrain
 }
 
 
-/* Alloc-, Clone and ConstantGadget for the Fp2Gadget
+/*
+Alloc-, Clone and ConstantGadget for the Fp2Gadget
 */
 
 impl<P, ConstraintF: PrimeField + SquareRootField> AllocGadget<Fp4<P>, ConstraintF> for Fp4Gadget<P, ConstraintF>
@@ -646,7 +649,8 @@ impl<P, ConstraintF: PrimeField + SquareRootField> ConstantGadget<Fp4<P>, Constr
     }
 }
 
-/* relational and conditional gadgets (incl. lookup tables) for Fp4Gadgets
+/*
+relational and conditional gadgets (incl. lookup tables) for Fp4Gadgets
 */
 
 impl<P, ConstraintF: PrimeField + SquareRootField> PartialEq for Fp4Gadget<P, ConstraintF>
@@ -831,7 +835,8 @@ for Fp4Gadget<P, ConstraintF>
     }
 }
 
-/* Packing and unpacking gadgets
+/*
+Packing and unpacking gadgets
 */
 impl<P, ConstraintF: PrimeField + SquareRootField> ToBitsGadget<ConstraintF> for Fp4Gadget<P, ConstraintF>
     where

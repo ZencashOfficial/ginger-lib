@@ -1,7 +1,9 @@
 /*
 Definition of the quadratic extension field gadget Fp2Gadget and implementation of the
 following traits for it:
-    - FieldGadget: without sub_in_place and square_equals.
+    - FieldGadget:
+        mul and related gadgets using Karatsuba multiplication,
+        extra implementations for square and square_in_place saving one constraint,
         NEqGadget has to be checked if it meets it's purpose by demanding all two components to be
         different.
     - AllocGadget, CloneGadget, ConstantGadget,
@@ -124,44 +126,10 @@ impl<P: Fp2Parameters<Fp = ConstraintF>, ConstraintF: PrimeField + SquareRootFie
         Ok(Self::new(c0, c1))
     }
 
-    /* unary operation gadgets
+    /*
+    addition gadgets
     */
-    #[inline]
-    fn negate<CS: ConstraintSystem<ConstraintF>>(&self, cs: CS) -> Result<Self, SynthesisError> {
-        let mut result = self.clone();
-        result.negate_in_place(cs)?;
-        Ok(result)
-    }
 
-    #[inline]
-    fn negate_in_place<CS: ConstraintSystem<ConstraintF>>(
-        &mut self,
-        mut cs: CS,
-    ) -> Result<&mut Self, SynthesisError> {
-        self.c0.negate_in_place(&mut cs.ns(|| "negate c0"))?;
-        self.c1.negate_in_place(&mut cs.ns(|| "negate c1"))?;
-        Ok(self)
-    }
-
-    #[inline]
-    fn double<CS: ConstraintSystem<ConstraintF>>(&self, cs: CS) -> Result<Self, SynthesisError> {
-        let mut result = self.clone();
-        result.double_in_place(cs)?;
-        Ok(result)
-    }
-
-    #[inline]
-    fn double_in_place<CS: ConstraintSystem<ConstraintF>>(
-        &mut self,
-        mut cs: CS,
-    ) -> Result<&mut Self, SynthesisError> {
-        self.c0.double_in_place(&mut cs.ns(|| "double c0"))?;
-        self.c1.double_in_place(&mut cs.ns(|| "double c1"))?;
-        Ok(self)
-    }
-
-    /* addition gadgets
-    */
     #[inline]
     fn add<CS: ConstraintSystem<ConstraintF>>(
         &self,
@@ -211,8 +179,27 @@ impl<P: Fp2Parameters<Fp = ConstraintF>, ConstraintF: PrimeField + SquareRootFie
         Ok(Self::new(c0, c1))
     }
 
-    /* substraction gadgets
+    #[inline]
+    fn double<CS: ConstraintSystem<ConstraintF>>(&self, cs: CS) -> Result<Self, SynthesisError> {
+        let mut result = self.clone();
+        result.double_in_place(cs)?;
+        Ok(result)
+    }
+
+    #[inline]
+    fn double_in_place<CS: ConstraintSystem<ConstraintF>>(
+        &mut self,
+        mut cs: CS,
+    ) -> Result<&mut Self, SynthesisError> {
+        self.c0.double_in_place(&mut cs.ns(|| "double c0"))?;
+        self.c1.double_in_place(&mut cs.ns(|| "double c1"))?;
+        Ok(self)
+    }
+
+    /*
+    substraction gadgets
     */
+
     #[inline]
     fn sub<CS: ConstraintSystem<ConstraintF>>(
         &self,
@@ -224,10 +211,27 @@ impl<P: Fp2Parameters<Fp = ConstraintF>, ConstraintF: PrimeField + SquareRootFie
         Ok(Self::new(c0, c1))
     }
 
-    // sub_in_place not implemented
+    #[inline]
+    fn negate<CS: ConstraintSystem<ConstraintF>>(&self, cs: CS) -> Result<Self, SynthesisError> {
+        let mut result = self.clone();
+        result.negate_in_place(cs)?;
+        Ok(result)
+    }
 
-    /* multiplication gadgets
+    #[inline]
+    fn negate_in_place<CS: ConstraintSystem<ConstraintF>>(
+        &mut self,
+        mut cs: CS,
+    ) -> Result<&mut Self, SynthesisError> {
+        self.c0.negate_in_place(&mut cs.ns(|| "negate c0"))?;
+        self.c1.negate_in_place(&mut cs.ns(|| "negate c1"))?;
+        Ok(self)
+    }
+
+    /*
+    multiplication gadgets
     */
+
     #[inline]
     fn mul<CS: ConstraintSystem<ConstraintF>>(
         &self,
@@ -296,6 +300,8 @@ impl<P: Fp2Parameters<Fp = ConstraintF>, ConstraintF: PrimeField + SquareRootFie
         Ok(Self::new(c0, c1))
     }
 
+    /* improves default implementation by 1 constraint.
+    */
     #[inline]
     fn square<CS: ConstraintSystem<ConstraintF>>(
         &self,
@@ -309,6 +315,7 @@ impl<P: Fp2Parameters<Fp = ConstraintF>, ConstraintF: PrimeField + SquareRootFie
              A.c0 * A.c1 = v0,
              (A.c0 + A.c1) * (A.c0 + non_residue * A.c1) - v0 * (1 + non_residue) = result.c0,
          and  2*v0 = result.c1 operating directly on LC level.
+
         Reference:
         "Multiplication and Squaring on Pairing-Friendly Fields"
         Devegili, OhEigeartaigh, Scott, Dahab
@@ -342,6 +349,9 @@ impl<P: Fp2Parameters<Fp = ConstraintF>, ConstraintF: PrimeField + SquareRootFie
         Ok(Self::new(c0, c1))
     }
 
+    /* no improvement in number of constraints,
+    improves default implementation by one private variable?
+    */
     #[inline]
     fn square_in_place<CS: ConstraintSystem<ConstraintF>>(
         &mut self,
@@ -389,6 +399,9 @@ impl<P: Fp2Parameters<Fp = ConstraintF>, ConstraintF: PrimeField + SquareRootFie
         Ok(self)
     }
 
+
+    // now that the patched code does not save any constraints:
+    // why not replace Karatsuba code by simple call to mul_equals?
     #[inline]
     fn inverse<CS: ConstraintSystem<ConstraintF>>(
         &self,
@@ -439,6 +452,7 @@ impl<P: Fp2Parameters<Fp = ConstraintF>, ConstraintF: PrimeField + SquareRootFie
         Ok(inverse)
     }
 
+    // does not save any constraint over default implementation?
     fn mul_equals<CS: ConstraintSystem<ConstraintF>>(
         &self,
         mut cs: CS,
@@ -529,8 +543,10 @@ impl<P: Fp2Parameters<Fp = ConstraintF>, ConstraintF: PrimeField + SquareRootFie
     }
 }
 
-/* Alloc-, Clone and ConstantGadget for the Fp2Gadget
+/*
+Alloc-, Clone and ConstantGadget for the Fp2Gadget
 */
+
 impl<P: Fp2Parameters<Fp = ConstraintF>, ConstraintF: PrimeField + SquareRootField> AllocGadget<Fp2<P>, ConstraintF>
 for Fp2Gadget<P, ConstraintF>
 {
@@ -617,8 +633,10 @@ ConstantGadget<Fp2<P>, ConstraintF> for Fp2Gadget<P, ConstraintF>
     }
 }
 
-/* relational and conditional gadgets (incl. lookup tables) for the Fp2Gadget
+/*
+relational and conditional gadgets (incl. lookup tables) for the Fp2Gadget
 */
+
 impl<P: Fp2Parameters<Fp = ConstraintF>, ConstraintF: PrimeField + SquareRootField> PartialEq
     for Fp2Gadget<P, ConstraintF>
 {
@@ -783,8 +801,10 @@ ThreeBitCondNegLookupGadget<ConstraintF> for Fp2Gadget<P, ConstraintF>
     }
 }
 
-/* Packing and unpacking gadgets for Fp2Gadget
+/*
+Packing and unpacking gadgets for Fp2Gadget
 */
+
 impl<P: Fp2Parameters<Fp = ConstraintF>, ConstraintF: PrimeField + SquareRootField> ToBitsGadget<ConstraintF>
     for Fp2Gadget<P, ConstraintF>
 {

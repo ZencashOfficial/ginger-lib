@@ -1,12 +1,15 @@
 /*
 Definition of the degree 6 extension field gadget Fp6Gadget (as cubic extension of of Fp2),
 and implementation of the following gadgets for it:
-    - FieldGadget: without double, double_in_place, sub_in_place, square_in_place, mul_by_constant_in_place
-        and square_equals.
+    - FieldGadget:
+        mul and square gadget using Toom-Cook,
+        Improvements can be made for square gadget using Chung-Hasan asymmetric squaring formula,
+        see https://github.com/ZencashOfficial/ginger-lib/issues/50
+        mul_by_constant code can be shortened by implementing naive multiplication
+        inverse and mul_equals gadget use Karatsuba (can be improved!)
         NEqGadget has to be checked if it meets it's purpose by demanding all three components to
         be different.
-        Improvements can be done using Toom-Cook instead of Karatsuba in fn inverse, and
-        shortening the code of fn mul_by_constant.
+    - optimizations of mul for elements of special form as used by the Fp12Gadget
     - AllocGadget, CloneGadget, ConstantGadget,
     - PartialEqGadget, ConditionalEqGadget, NEqGadget,
     - CondSelectGadget, TwoBitLookupGadget, ThreeBitNegLookupGadget,
@@ -222,34 +225,8 @@ where
         Ok(Self::new(c0, c1, c2))
     }
 
-    /* unary operation gadgets
-    */
-
-    #[inline]
-    fn negate<CS: ConstraintSystem<ConstraintF>>(
-        &self,
-        mut cs: CS,
-    ) -> Result<Self, SynthesisError> {
-        let c0 = self.c0.negate(&mut cs.ns(|| "negate c0"))?;
-        let c1 = self.c1.negate(&mut cs.ns(|| "negate c1"))?;
-        let c2 = self.c2.negate(&mut cs.ns(|| "negate c2"))?;
-        Ok(Self::new(c0, c1, c2))
-    }
-
-    #[inline]
-    fn negate_in_place<CS: ConstraintSystem<ConstraintF>>(
-        &mut self,
-        mut cs: CS,
-    ) -> Result<&mut Self, SynthesisError> {
-        self.c0.negate_in_place(&mut cs.ns(|| "negate c0"))?;
-        self.c1.negate_in_place(&mut cs.ns(|| "negate c1"))?;
-        self.c2.negate_in_place(&mut cs.ns(|| "negate c2"))?;
-        Ok(self)
-    }
-
-    // fn double and double_in_place not implemented
-
-    /* addition gadgets
+    /*
+    addition gadgets
     */
 
     #[inline]
@@ -308,7 +285,8 @@ where
         Ok(Self::new(c0, c1, c2))
     }
 
-    /* substraction gadgets
+    /*
+    substraction gadgets
     */
 
     #[inline]
@@ -323,7 +301,30 @@ where
         Ok(Self::new(c0, c1, c2))
     }
 
-    /* multiplication gadgets
+    #[inline]
+    fn negate<CS: ConstraintSystem<ConstraintF>>(
+        &self,
+        mut cs: CS,
+    ) -> Result<Self, SynthesisError> {
+        let c0 = self.c0.negate(&mut cs.ns(|| "negate c0"))?;
+        let c1 = self.c1.negate(&mut cs.ns(|| "negate c1"))?;
+        let c2 = self.c2.negate(&mut cs.ns(|| "negate c2"))?;
+        Ok(Self::new(c0, c1, c2))
+    }
+
+    #[inline]
+    fn negate_in_place<CS: ConstraintSystem<ConstraintF>>(
+        &mut self,
+        mut cs: CS,
+    ) -> Result<&mut Self, SynthesisError> {
+        self.c0.negate_in_place(&mut cs.ns(|| "negate c0"))?;
+        self.c1.negate_in_place(&mut cs.ns(|| "negate c1"))?;
+        self.c2.negate_in_place(&mut cs.ns(|| "negate c2"))?;
+        Ok(self)
+    }
+
+    /*
+    multiplication gadgets
     */
 
     #[inline]
@@ -843,7 +844,8 @@ where
     }
 }
 
-/* Alloc-, Clone and ConstantGadget for the Fp6Gadget
+/*
+Alloc-, Clone and ConstantGadget for the Fp6Gadget
 */
 
 impl<P, ConstraintF: PrimeField + SquareRootField> AllocGadget<Fp6<P>, ConstraintF> for Fp6Gadget<P, ConstraintF>
@@ -939,7 +941,8 @@ impl<P, ConstraintF: PrimeField + SquareRootField> ConstantGadget<Fp6<P>, Constr
     }
 }
 
-/* relational and conditional gadgets (incl. lookup tables) for Fp6Gadgets
+/*
+relational and conditional gadgets (incl. lookup tables) for Fp6Gadgets
 */
 
 impl<P, ConstraintF: PrimeField + SquareRootField> PartialEq for Fp6Gadget<P, ConstraintF>
@@ -1152,7 +1155,8 @@ for Fp6Gadget<P, ConstraintF>
     }
 }
 
-/* Packing and unpacking gadgets for Fp6Gadget
+/*
+Packing and unpacking gadgets for Fp6Gadget
 */
 
 impl<P, ConstraintF: PrimeField + SquareRootField> ToBitsGadget<ConstraintF> for Fp6Gadget<P, ConstraintF>

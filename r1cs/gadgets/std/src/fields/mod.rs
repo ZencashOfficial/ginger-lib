@@ -1,3 +1,12 @@
+/*
+FieldGadget trait for the prime field and extension field gadgets.
+Defines the interfaces for
+  - arithmetic functions on field gadgets,
+  - the Frobenius map (for field extensions),
+  - some auxiliary useful functions such as conditional_add_constant, mul_equ
+and gives a generic implementation of the square and multiply circuit.
+*/
+
 // use std::ops::{Mul, MulAssign};
 use algebra::Field;
 use r1cs_core::{ConstraintSystem, SynthesisError};
@@ -20,13 +29,6 @@ pub mod jubjub;
 pub mod mnt4753;
 pub mod mnt6753;
 
-/* FieldGadget trait for the prime field and extension field gadgets.
-Defines the interfaces for
-  - arithmetic functions on field gadgets,
-  - the Frobenius map (for field extensions),
-  - some auxiliary useful functions such as conditional_add_constant, mul_equ
-and gives a generic implementation of the square and multiply circuit. 
-*/
 pub trait FieldGadget<F: Field, ConstraintF: Field>:
     Sized
     + Clone
@@ -51,38 +53,6 @@ pub trait FieldGadget<F: Field, ConstraintF: Field>:
     fn zero<CS: ConstraintSystem<ConstraintF>>(_: CS) -> Result<Self, SynthesisError>;
 
     fn one<CS: ConstraintSystem<ConstraintF>>(_: CS) -> Result<Self, SynthesisError>;
-
-    /*
-    unary operations gadgets
-    */
-
-    // supposed to allocate an output element and enforce it to be minus input.
-    fn negate<CS: ConstraintSystem<ConstraintF>>(&self, _: CS) -> Result<Self, SynthesisError>;
-
-    // replaces self by minus self
-    #[inline]
-    fn negate_in_place<CS: ConstraintSystem<ConstraintF>>(
-        &mut self,
-        cs: CS,
-    ) -> Result<&mut Self, SynthesisError> {
-        *self = self.negate(cs)?;
-        Ok(self)
-    }
-
-    //suppose to allocate an output element and enforce it to be the double of the input.
-    fn double<CS: ConstraintSystem<ConstraintF>>(&self, cs: CS) -> Result<Self, SynthesisError> {
-        self.add(cs, &self)
-    }
-
-    // replaces self by it's double
-    #[inline]
-    fn double_in_place<CS: ConstraintSystem<ConstraintF>>(
-        &mut self,
-        cs: CS,
-    ) -> Result<&mut Self, SynthesisError> {
-        *self = self.double(cs)?;
-        Ok(self)
-    }
 
     /*
     addition gadgets
@@ -124,12 +94,31 @@ pub trait FieldGadget<F: Field, ConstraintF: Field>:
         Ok(self)
     }
 
+    // interface for conditional adding of a constant
+    //      result = self + bit * constant,
+    // where bit is Boolean.
     fn conditionally_add_constant<CS: ConstraintSystem<ConstraintF>>(
         &self,
         _: CS,
         _: &Boolean,
         _: F,
     ) -> Result<Self, SynthesisError>;
+
+    // allocate an output element and enforce it to be the double of the input.
+    // default implementation uses add
+    fn double<CS: ConstraintSystem<ConstraintF>>(&self, cs: CS) -> Result<Self, SynthesisError> {
+        self.add(cs, &self)
+    }
+
+    // replaces self by it's double
+    #[inline]
+    fn double_in_place<CS: ConstraintSystem<ConstraintF>>(
+        &mut self,
+        cs: CS,
+    ) -> Result<&mut Self, SynthesisError> {
+        *self = self.double(cs)?;
+        Ok(self)
+    }
 
     /*
     substraction gadgets
@@ -173,6 +162,19 @@ pub trait FieldGadget<F: Field, ConstraintF: Field>:
         self.add_constant_in_place(cs, &(-(*other)))
     }
 
+    // supposed to allocate an output element and enforce it to be minus input.
+    fn negate<CS: ConstraintSystem<ConstraintF>>(&self, _: CS) -> Result<Self, SynthesisError>;
+
+    // replaces self by minus self
+    #[inline]
+    fn negate_in_place<CS: ConstraintSystem<ConstraintF>>(
+        &mut self,
+        cs: CS,
+    ) -> Result<&mut Self, SynthesisError> {
+        *self = self.negate(cs)?;
+        Ok(self)
+    }
+
     /*
     multiplication gadgets
     */
@@ -213,7 +215,8 @@ pub trait FieldGadget<F: Field, ConstraintF: Field>:
         Ok(self)
     }
 
-    // supposed to allocate an output element and enforce it to be the square of the input
+    // allocates an output element and enforce it to be the square of the input
+    // default implementation uses mul
     fn square<CS: ConstraintSystem<ConstraintF>>(&self, cs: CS) -> Result<Self, SynthesisError> {
         self.mul(cs, &self)
     }
@@ -229,9 +232,11 @@ pub trait FieldGadget<F: Field, ConstraintF: Field>:
     }
 
     // suppose to allocate an output element and enforce it to be the mult. inverse of the input
+    // why no default implementation using mul_equals?
     fn inverse<CS: ConstraintSystem<ConstraintF>>(&self, _: CS) -> Result<Self, SynthesisError>;
 
-    // enforces that result = self * other
+    // enforces that result = self * other.
+    // default implementation does not save any constraints
     #[inline]
     fn mul_equals<CS: ConstraintSystem<ConstraintF>>(
         &self,
@@ -243,7 +248,8 @@ pub trait FieldGadget<F: Field, ConstraintF: Field>:
         result.enforce_equal(&mut cs.ns(|| "test_equals"), &actual_result)
     }
 
-    // enforces that result = self^2
+    // enforces that result = self^2,
+    // default implementation does not save any constraints
     #[inline]
     fn square_equals<CS: ConstraintSystem<ConstraintF>>(
         &self,
@@ -254,7 +260,8 @@ pub trait FieldGadget<F: Field, ConstraintF: Field>:
         result.enforce_equal(&mut cs.ns(|| "test_equals"), &actual_result)
     }
 
-    // Binary exponentiation via square and multiply, the exponent is given as a big endian list of Boolean
+    // Binary exponentiation via square and multiply,
+    // the exponent is given as a big endian list of Boolean
     #[inline]
     fn pow<CS: ConstraintSystem<ConstraintF>>(
         &self,
@@ -293,7 +300,8 @@ pub trait FieldGadget<F: Field, ConstraintF: Field>:
         Ok(self)
     }
 
-    // The interfaces for counting constraints. All other costs are derived from these.
+    /* The interfaces for counting constraints. All other costs are derived from these.
+    */
 
     fn cost_of_mul() -> usize;
 

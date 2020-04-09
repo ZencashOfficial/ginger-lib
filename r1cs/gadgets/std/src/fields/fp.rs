@@ -1,11 +1,12 @@
 /*
 Definition of the FpGadget and implementation of the following gadgets for it:
-    - FieldGadget: without sub_in_place, square, and square_in_place.
+    - FieldGadget,
     - AllocGadget, CloneGadget, ConstantGadget,
     - PartialEqGadget, ConditionalEqGadget, NEqGadget,
     - CondSelectGadget, TwoBitLookupGadget, ThreeBitNegLookupGadget,
     - ToBitsGadget, FromBitsGadget, ToBytesGadget
 */
+
 use algebra::{bytes::ToBytes, FpParameters, PrimeField};
 use r1cs_core::{
     ConstraintSystem,
@@ -180,43 +181,10 @@ impl<F: PrimeField> FieldGadget<F, F> for FpGadget<F> {
         })
     }
 
-    // unary operations
-    #[inline]
-    fn negate<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Self, SynthesisError> {
-        let mut result = self.clone();
-        result.negate_in_place(cs)?;
-        Ok(result)
-    }
+    /*
+    addition gadgets
+    */
 
-    #[inline]
-    fn negate_in_place<CS: ConstraintSystem<F>>(
-        &mut self,
-        _cs: CS,
-    ) -> Result<&mut Self, SynthesisError> {
-        self.value.as_mut().map(|val| *val = -(*val));
-        self.variable.negate_in_place();
-        Ok(self)
-    }
-
-    #[inline]
-    fn double<CS: ConstraintSystem<F>>(&self, _cs: CS) -> Result<Self, SynthesisError> {
-        let value = self.value.map(|val| val.double());
-        let mut variable = self.variable.clone();
-        variable.double_in_place();
-        Ok(FpGadget { value, variable })
-    }
-
-    #[inline]
-    fn double_in_place<CS: ConstraintSystem<F>>(
-        &mut self,
-        _cs: CS,
-    ) -> Result<&mut Self, SynthesisError> {
-        self.value.as_mut().map(|val| val.double_in_place());
-        self.variable.double_in_place();
-        Ok(self)
-    }
-
-    // addition gadgets
     #[inline]
     fn add<CS: ConstraintSystem<F>>(
         &self,
@@ -258,6 +226,24 @@ impl<F: PrimeField> FieldGadget<F, F> for FpGadget<F> {
         Ok(self)
     }
 
+    #[inline]
+    fn double<CS: ConstraintSystem<F>>(&self, _cs: CS) -> Result<Self, SynthesisError> {
+        let value = self.value.map(|val| val.double());
+        let mut variable = self.variable.clone();
+        variable.double_in_place();
+        Ok(FpGadget { value, variable })
+    }
+
+    #[inline]
+    fn double_in_place<CS: ConstraintSystem<F>>(
+        &mut self,
+        _cs: CS,
+    ) -> Result<&mut Self, SynthesisError> {
+        self.value.as_mut().map(|val| val.double_in_place());
+        self.variable.double_in_place();
+        Ok(self)
+    }
+
     /* conditional adding of a constant
         result = self + bit * constant,
     where bit is Boolean.
@@ -279,7 +265,10 @@ impl<F: PrimeField> FieldGadget<F, F> for FpGadget<F> {
         })
     }
 
-    // substraction gadgets
+    /*
+    substraction gadgets
+    */
+
     #[inline]
     fn sub<CS: ConstraintSystem<F>>(
         &self,
@@ -299,7 +288,27 @@ impl<F: PrimeField> FieldGadget<F, F> for FpGadget<F> {
 
     // sub_in_place not implemented
 
-    // multiplication gadgets
+    #[inline]
+    fn negate<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Self, SynthesisError> {
+        let mut result = self.clone();
+        result.negate_in_place(cs)?;
+        Ok(result)
+    }
+
+    #[inline]
+    fn negate_in_place<CS: ConstraintSystem<F>>(
+        &mut self,
+        _cs: CS,
+    ) -> Result<&mut Self, SynthesisError> {
+        self.value.as_mut().map(|val| *val = -(*val));
+        self.variable.negate_in_place();
+        Ok(self)
+    }
+
+    /*
+    multiplication gadgets
+    */
+
     #[inline]
     fn mul<CS: ConstraintSystem<F>>(
         &self,
@@ -339,8 +348,6 @@ impl<F: PrimeField> FieldGadget<F, F> for FpGadget<F> {
         self.variable *= *other;
         Ok(self)
     }
-
-    // square and square_in_place not implemented
 
     #[inline]
     fn inverse<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Self, SynthesisError> {
@@ -418,8 +425,10 @@ impl<F: PrimeField> FieldGadget<F, F> for FpGadget<F> {
     fn cost_of_inv() -> usize { 1 }
 }
 
-/* Alloc-, Clone and ConstantGadget for the FpGadget
+/*
+Alloc-, Clone and ConstantGadget for the FpGadget
 */
+
 impl<F: PrimeField> AllocGadget<F, F> for FpGadget<F> {
     #[inline]
     fn alloc<FN, T, CS: ConstraintSystem<F>>(
@@ -501,7 +510,8 @@ impl<F: PrimeField> ConstantGadget<F, F> for FpGadget<F> {
     }
 }
 
-/* relational and conditional gadgets (incl. lookup tables) for the FpGadget
+/*
+relational and conditional gadgets (incl. lookup tables) for the FpGadget
 */
 
 impl<F: PrimeField> PartialEq for FpGadget<F> {
@@ -776,8 +786,10 @@ impl<F: PrimeField> ThreeBitCondNegLookupGadget<F> for FpGadget<F> {
     }
 }
 
-/* Packing and unpacking gadgets for FpGadget
+/*
+Packing and unpacking gadgets for FpGadget
 */
+
 impl<F: PrimeField> ToBitsGadget<F> for FpGadget<F> {
     /// Outputs the binary representation of the value in `self` in *big-endian*
     /// form.

@@ -1,12 +1,14 @@
 /*
-Definition of the cubic extension field gadget Fp4Gadget, and implementation of the
+Definition of the cubic extension field gadget Fp3Gadget, and implementation of the
 following gadgets for it:
-    - FieldGadget: without double, double_in_place, sub_in_place, square_in_place, mul_by_constant_in_place
-        and square_equals.
+    - FieldGadget
+        mul and square gadget using Toom-Cook
+        Improvements can be made for square gadget using Chung-Hasan asymmetric squaring formula,
+        see https://github.com/ZencashOfficial/ginger-lib/issues/50
+        mul_by_constant code can be shortened by implementing naive multiplication
+        inverse and mul_equals gadget use Karatsuba (can be improved!)
         NEqGadget has to be checked if it meets it's purpose by demanding all three components to
         be different.
-        Improvements can be done using Toom-Cook instead of Karatsuba in fn inverse, and
-        shortening the code of fn mul_by_constant.
     - AllocGadget, CloneGadget, ConstantGadget,
     - PartialEqGadget, ConditionalEqGadget, NEqGadget,
     - CondSelectGadget, TwoBitLookupGadget, ThreeBitNegLookupGadget,
@@ -117,31 +119,10 @@ for Fp3Gadget<P, ConstraintF>
         Ok(Self::new(c0, c1, c2))
     }
 
-    /* unary operation gadgets
+    /*
+    addition gadgets
     */
-    #[inline]
-    fn negate<CS: ConstraintSystem<ConstraintF>>(&self, mut cs: CS) -> Result<Self, SynthesisError> {
-        let c0 = self.c0.negate(&mut cs.ns(|| "negate c0"))?;
-        let c1 = self.c1.negate(&mut cs.ns(|| "negate c1"))?;
-        let c2 = self.c2.negate(&mut cs.ns(|| "negate c2"))?;
-        Ok(Self::new(c0, c1, c2))
-    }
 
-    #[inline]
-    fn negate_in_place<CS: ConstraintSystem<ConstraintF>>(
-        &mut self,
-        mut cs: CS,
-    ) -> Result<&mut Self, SynthesisError> {
-        self.c0.negate_in_place(&mut cs.ns(|| "negate c0"))?;
-        self.c1.negate_in_place(&mut cs.ns(|| "negate c1"))?;
-        self.c2.negate_in_place(&mut cs.ns(|| "negate c2"))?;
-        Ok(self)
-    }
-
-    // fn double and double_in_place not implemented
-
-    /* addition gadgets
-    */
     #[inline]
     fn add<CS: ConstraintSystem<ConstraintF>>(
         &self,
@@ -194,8 +175,10 @@ for Fp3Gadget<P, ConstraintF>
         Ok(Self::new(c0, c1, c2))
     }
 
-    /* substraction gadgets
+    /*
+    substraction gadgets
     */
+
     #[inline]
     fn sub<CS: ConstraintSystem<ConstraintF>>(
         &self,
@@ -208,10 +191,29 @@ for Fp3Gadget<P, ConstraintF>
         Ok(Self::new(c0, c1, c2))
     }
 
-    // fn sub_in_place not implemented
+    #[inline]
+    fn negate<CS: ConstraintSystem<ConstraintF>>(&self, mut cs: CS) -> Result<Self, SynthesisError> {
+        let c0 = self.c0.negate(&mut cs.ns(|| "negate c0"))?;
+        let c1 = self.c1.negate(&mut cs.ns(|| "negate c1"))?;
+        let c2 = self.c2.negate(&mut cs.ns(|| "negate c2"))?;
+        Ok(Self::new(c0, c1, c2))
+    }
 
-    /* multiplication gadgets
+    #[inline]
+    fn negate_in_place<CS: ConstraintSystem<ConstraintF>>(
+        &mut self,
+        mut cs: CS,
+    ) -> Result<&mut Self, SynthesisError> {
+        self.c0.negate_in_place(&mut cs.ns(|| "negate c0"))?;
+        self.c1.negate_in_place(&mut cs.ns(|| "negate c1"))?;
+        self.c2.negate_in_place(&mut cs.ns(|| "negate c2"))?;
+        Ok(self)
+    }
+
+    /*
+    multiplication gadgets
     */
+
     #[inline]
     fn mul<CS: ConstraintSystem<ConstraintF>>(
         &self,
@@ -513,7 +515,6 @@ for Fp3Gadget<P, ConstraintF>
         Ok(Self::new(c0, c1, c2))
     }
 
-    // fn mul_by_constant_in_place not implemented
 
     #[inline]
     fn square<CS: ConstraintSystem<ConstraintF>>(&self, mut cs: CS) -> Result<Self, SynthesisError> {
@@ -687,7 +688,6 @@ for Fp3Gadget<P, ConstraintF>
         Ok(())
     }
 
-    // fn square_equals not implemented
 
     fn frobenius_map<CS: ConstraintSystem<ConstraintF>>(
         &self,
@@ -731,8 +731,10 @@ for Fp3Gadget<P, ConstraintF>
 
 }
 
-/* Alloc-, Clone and ConstantGadget for the Fp2Gadget
+/*
+Alloc-, Clone and ConstantGadget for the Fp2Gadget
 */
+
 impl<P: Fp3Parameters<Fp = ConstraintF>, ConstraintF: PrimeField + SquareRootField>
 AllocGadget<Fp3<P>, ConstraintF> for Fp3Gadget<P, ConstraintF>
 {
@@ -820,8 +822,10 @@ ConstantGadget<Fp3<P>, ConstraintF> for Fp3Gadget<P, ConstraintF>
     }
 }
 
-/* relational and conditional gadgets (incl. lookup tables) for the Fp2Gadget
+/*
+relational and conditional gadgets (incl. lookup tables) for the Fp2Gadget
 */
+
 impl<P: Fp3Parameters<Fp = ConstraintF>, ConstraintF: PrimeField + SquareRootField> PartialEq for Fp3Gadget<P, ConstraintF>
 {
     fn eq(&self, other: &Self) -> bool {
@@ -993,8 +997,10 @@ ThreeBitCondNegLookupGadget<ConstraintF> for Fp3Gadget<P, ConstraintF>
     }
 }
 
-/* Packing and unpacking gadgets for Fp2Gadget
+/*
+Packing and unpacking gadgets for Fp2Gadget
 */
+
 impl<P: Fp3Parameters<Fp = ConstraintF>, ConstraintF: PrimeField + SquareRootField> ToBitsGadget<ConstraintF> for Fp3Gadget<P, ConstraintF>
 {
     fn to_bits<CS: ConstraintSystem<ConstraintF>>(&self, mut cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
