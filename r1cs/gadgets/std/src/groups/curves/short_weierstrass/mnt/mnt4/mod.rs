@@ -1,18 +1,27 @@
-use algebra::Field;
+use algebra::{Field, AffineCurve};
+use algebra::curves::{
+    models::mnt4::{MNT4Parameters, g1::G1Prepared, g2::{G2PreparedCoefficients, G2Prepared}},
+    ProjectiveCurve,
+};
 
 use crate::{fields::{
     FieldGadget, fp::FpGadget, fp2::Fp2Gadget,
-}, groups::curves::short_weierstrass::short_weierstrass_projective::AffineGadget,
-    bits::uint8::UInt8, Assignment,
-    alloc::AllocGadget,
-    ToBytesGadget,
+}, groups::{
+    curves::short_weierstrass::short_weierstrass_projective::AffineGadget,
+    GroupGadget,
+},
+            bits::{
+                boolean::Boolean,
+                uint8::UInt8,
+            }, Assignment,
+            alloc::{AllocGadget, ConstantGadget},
+            select::CondSelectGadget,
+            ToBytesGadget,
 };
 
 use r1cs_core::{ConstraintSystem, SynthesisError};
-use algebra::curves::models::mnt4::MNT4Parameters;
 use std::fmt::Debug;
 use std::ops::Mul;
-use crate::bits::boolean::Boolean;
 
 pub mod mnt4753;
 
@@ -32,9 +41,9 @@ type Fp2G<P> = Fp2Gadget<<P as MNT4Parameters>::Fp2Params, <P as MNT4Parameters>
 
 #[derive(Derivative)]
 #[derivative(
-Clone(bound = "FpGadget<P::Fp>: Clone"),
+Clone(bound = "G1Gadget<P>: Clone"),
 Clone(bound = "Fp2Gadget<P::Fp2Params, P::Fp>: Clone"),
-Debug(bound = "FpGadget<P::Fp>: Debug"),
+Debug(bound = "G1Gadget<P>: Debug"),
 Debug(bound = "Fp2Gadget<P::Fp2Params, P::Fp>: Debug"),
 )]
 pub struct G1PreparedGadget<P: MNT4Parameters> {
@@ -72,10 +81,34 @@ impl<P: MNT4Parameters> ToBytesGadget<P::Fp> for G1PreparedGadget<P> {
     }
 }
 
+impl<P: MNT4Parameters> ConstantGadget<G1Prepared<P>, P::Fp> for G1PreparedGadget<P> {
+
+    #[inline]
+    fn from_value<CS: ConstraintSystem<P::Fp>>(mut cs: CS, value: &G1Prepared<P>) -> Self {
+        let p = G1Gadget::<P>::from_value(cs.ns(|| "hardcode p"), &value.p.into_projective());
+        let p_y_twist_squared = Fp2G::<P>::from_value(cs.ns(|| "hardcode p_y_twist_squared"), &value.py_twist_squared);
+
+        Self {
+            p,
+            p_y_twist_squared,
+        }
+    }
+
+    fn get_constant(&self) -> G1Prepared<P> {
+        G1Prepared::<P>{
+            p: self.p.get_value().unwrap().into_affine(),
+            py_twist_squared: self.p_y_twist_squared.get_value().unwrap(),
+        }
+    }
+}
+
+
 #[derive(Derivative)]
 #[derivative(
 Clone(bound = "Fp2Gadget<P::Fp2Params, P::Fp>: Clone"),
-Debug(bound = "Fp2Gadget<P::Fp2Params, P::Fp>: Debug")
+Debug(bound = "Fp2Gadget<P::Fp2Params, P::Fp>: Debug"),
+Eq(bound = "Fp2Gadget<P::Fp2Params, P::Fp>: Eq"),
+PartialEq(bound = "Fp2Gadget<P::Fp2Params, P::Fp>: PartialEq"),
 )]
 pub struct G2CoefficientsGadget<P: MNT4Parameters> {
     pub(crate) r_y:            Fp2G<P>,
@@ -100,10 +133,81 @@ impl<P: MNT4Parameters> ToBytesGadget<P::Fp> for G2CoefficientsGadget<P> {
     }
 }
 
+impl<P: MNT4Parameters> ConstantGadget<G2PreparedCoefficients<P>, P::Fp> for G2CoefficientsGadget<P> {
+
+    #[inline]
+    fn from_value<CS: ConstraintSystem<P::Fp>>(mut cs: CS, value: &G2PreparedCoefficients<P>) -> Self {
+        let r_y = Fp2G::<P>::from_value(cs.ns(|| "hardcode r_y"), &value.r_y);
+        let gamma = Fp2G::<P>::from_value(cs.ns(|| "hardcode gamma"), &value.gamma);
+        let gamma_x = Fp2G::<P>::from_value(cs.ns(|| "hardcode gamma_x"), &value.gamma_x);
+
+        Self {
+            r_y,
+            gamma,
+            gamma_x,
+        }
+    }
+
+    fn get_constant(&self) -> G2PreparedCoefficients<P> {
+        G2PreparedCoefficients::<P>{
+            r_y: self.r_y.get_value().unwrap(),
+            gamma: self.gamma.get_value().unwrap(),
+            gamma_x: self.gamma_x.get_value().unwrap(),
+        }
+    }
+}
+
+impl<P: MNT4Parameters> CondSelectGadget<P::Fp> for G2CoefficientsGadget<P> {
+    fn conditionally_select<CS: ConstraintSystem<P::Fp>>(
+        mut cs: CS,
+        cond: &Boolean,
+        first: &Self,
+        second: &Self
+    ) -> Result<Self, SynthesisError>
+    {
+        let r_y = Fp2G::<P>::conditionally_select(
+            cs.ns(|| "r_y"),
+            cond,
+            &first.r_y,
+            &second.r_y
+        )?;
+
+        let gamma = Fp2G::<P>::conditionally_select(
+            cs.ns(|| "gamma"),
+            cond,
+            &first.gamma,
+            &second.gamma
+        )?;
+
+        let gamma_x = Fp2G::<P>::conditionally_select(
+            cs.ns(|| "gamma_x"),
+            cond,
+            &first.gamma_x,
+            &second.gamma_x
+        )?;
+
+        Ok(Self {
+            r_y,
+            gamma,
+            gamma_x,
+        })
+    }
+
+    fn cost() -> usize {
+        3 * <Fp2G<P> as CondSelectGadget<P::Fp>>::cost()
+    }
+}
+
 #[derive(Derivative)]
 #[derivative(
+Clone(bound = "G2Gadget<P>: Clone"),
 Clone(bound = "Fp2Gadget<P::Fp2Params, P::Fp>: Clone"),
-Debug(bound = "Fp2Gadget<P::Fp2Params, P::Fp>: Debug")
+Debug(bound = "G2Gadget<P>: Debug"),
+Debug(bound = "Fp2Gadget<P::Fp2Params, P::Fp>: Debug"),
+Eq(bound = "G2Gadget<P>: Eq"),
+Eq(bound = "Fp2Gadget<P::Fp2Params, P::Fp>: Eq"),
+PartialEq(bound = "G2Gadget<P>: PartialEq"),
+PartialEq(bound = "Fp2Gadget<P::Fp2Params, P::Fp>: PartialEq"),
 )]
 pub struct G2PreparedGadget<P: MNT4Parameters>{
     pub q:      G2Gadget<P>,
@@ -247,5 +351,73 @@ impl<P: MNT4Parameters> ToBytesGadget<P::Fp> for G2PreparedGadget<P>
         }
 
         Ok(x)
+    }
+}
+
+impl<P: MNT4Parameters> ConstantGadget<G2Prepared<P>, P::Fp> for G2PreparedGadget<P> {
+
+    #[inline]
+    fn from_value<CS: ConstraintSystem<P::Fp>>(mut cs: CS, value: &G2Prepared<P>) -> Self {
+        let q = G2Gadget::<P>::from_value(cs.ns(|| "hardcode q"), &value.q.into_projective());
+        let coeffs = value.coeffs
+            .iter()
+            .enumerate()
+            .map(|(i, query_i)| {
+                G2CoefficientsGadget::<P>::from_value(cs.ns(|| format!("coeff_{}", i)), query_i)
+            })
+            .collect::<Vec<_>>();
+        Self {
+            q,
+            coeffs,
+        }
+    }
+
+    fn get_constant(&self) -> G2Prepared<P> {
+        G2Prepared::<P>{
+            q: self.q.get_value().unwrap().into_affine(),
+            coeffs: self.coeffs.iter().map(|coeff| coeff.get_constant()).collect::<Vec<_>>()
+        }
+    }
+}
+
+impl<P: MNT4Parameters> CondSelectGadget<P::Fp> for G2PreparedGadget<P> {
+    fn conditionally_select<CS: ConstraintSystem<P::Fp>>(
+        mut cs: CS,
+        cond: &Boolean,
+        first: &Self,
+        second: &Self
+    ) -> Result<Self, SynthesisError>
+    {
+        let q = G2Gadget::<P>::conditionally_select(
+            cs.ns(|| "q"),
+            cond,
+            &first.q,
+            &second.q
+        )?;
+
+        let mut coeffs = Vec::new();
+        for (i, (first, second)) in
+            first.coeffs.iter().zip(second.coeffs.iter()).enumerate() {
+            let val = G2CoefficientsGadget::<P>::conditionally_select(
+                cs.ns(|| format!("coeff_{}", i)),
+                cond,
+                &first,
+                &second
+            )?;
+            coeffs.push(val);
+        }
+
+        Ok(Self {
+            q,
+            coeffs,
+        })
+    }
+
+    fn cost() -> usize {
+        let total_steps = P::WNAF.len() +
+            P::WNAF.iter().filter(|&val| *val != 0).collect::<Vec<_>>().len();
+
+        <G2Gadget<P> as CondSelectGadget<P::Fp>>::cost() +
+            (total_steps * <G2CoefficientsGadget<P> as CondSelectGadget<P::Fp>>::cost())
     }
 }

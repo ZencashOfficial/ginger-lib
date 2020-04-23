@@ -8,6 +8,9 @@ use std::{borrow::Borrow, marker::PhantomData};
 
 use super::{NIZK, NIZKVerifierGadget};
 
+pub mod hardcoded;
+pub use hardcoded::*;
+
 /// Note: V should serialize its contents to `Vec<E::Fr>` in the same order as
 /// during the constraint generation.
 pub struct Groth16<
@@ -24,7 +27,7 @@ pub struct Groth16<
 }
 
 impl<E: PairingEngine, C: ConstraintSynthesizer<E::Fr>, V: ToConstraintField<E::Fr> + ?Sized> NIZK
-    for Groth16<E, C, V>
+for Groth16<E, C, V>
 {
     type Circuit = C;
     type AssignedCircuit = C;
@@ -63,35 +66,11 @@ pub struct VerifyingKeyGadget<
     pub gamma_abc_g1:     Vec<P::G1Gadget>,
 }
 
-impl<PairingE: PairingEngine, ConstraintF: Field, P: PairingGadget<PairingE, ConstraintF>>
-VerifyingKeyGadget<PairingE, ConstraintF, P>
-{
-    pub fn prepare<CS: ConstraintSystem<ConstraintF>>(
-        &self,
-        mut cs: CS,
-    ) -> Result<PreparedVerifyingKeyGadget<PairingE, ConstraintF, P>, SynthesisError> {
-        let mut cs = cs.ns(|| "Preparing verifying key");
-
-        let gamma_g2_neg = self.gamma_g2.negate(&mut cs.ns(|| "Negate gamma_g2"))?;
-        let gamma_g2_neg_pc = P::prepare_g2(&mut cs.ns(|| "Prepare gamma_g2_neg"), &gamma_g2_neg)?;
-
-        let delta_g2_neg = self.delta_g2.negate(&mut cs.ns(|| "Negate delta_g2"))?;
-        let delta_g2_neg_pc = P::prepare_g2(&mut cs.ns(|| "Prepare delta_g2_neg"), &delta_g2_neg)?;
-
-        Ok(PreparedVerifyingKeyGadget {
-            alpha_g1_beta_g2: self.alpha_g1_beta_g2.clone(),
-            gamma_g2_neg_pc,
-            delta_g2_neg_pc,
-            gamma_abc_g1: self.gamma_abc_g1.clone(),
-        })
-    }
-}
-
 #[derive(Derivative)]
 #[derivative(Clone(
 bound = "P::G1Gadget: Clone, P::GTGadget: Clone, P::G1PreparedGadget: Clone, \
              P::G2PreparedGadget: Clone, "
-))]
+),Debug)]
 pub struct PreparedVerifyingKeyGadget<
     PairingE: PairingEngine,
     ConstraintF: Field,
@@ -103,15 +82,45 @@ pub struct PreparedVerifyingKeyGadget<
     pub gamma_abc_g1:     Vec<P::G1Gadget>,
 }
 
+
+impl <PairingE, ConstraintF, P> FromGadget<VerifyingKeyGadget<PairingE, ConstraintF, P>, ConstraintF>
+for PreparedVerifyingKeyGadget<PairingE, ConstraintF, P>
+    where
+        PairingE: PairingEngine,
+        ConstraintF: Field,
+        P: PairingGadget<PairingE, ConstraintF>,
+{
+    fn from<CS: ConstraintSystem<ConstraintF>>(
+        vk: VerifyingKeyGadget<PairingE, ConstraintF, P>,
+        mut cs: CS
+    ) -> Result<Self, SynthesisError> {
+        let mut cs = cs.ns(|| "Preparing verifying key");
+
+        let gamma_g2_neg = vk.gamma_g2.negate(&mut cs.ns(|| "Negate gamma_g2"))?;
+        let gamma_g2_neg_pc = P::prepare_g2(&mut cs.ns(|| "Prepare gamma_g2_neg"), &gamma_g2_neg)?;
+
+        let delta_g2_neg = vk.delta_g2.negate(&mut cs.ns(|| "Negate delta_g2"))?;
+        let delta_g2_neg_pc = P::prepare_g2(&mut cs.ns(|| "Prepare delta_g2_neg"), &delta_g2_neg)?;
+
+        Ok(PreparedVerifyingKeyGadget {
+            alpha_g1_beta_g2: vk.alpha_g1_beta_g2.clone(),
+            gamma_g2_neg_pc,
+            delta_g2_neg_pc,
+            gamma_abc_g1: vk.gamma_abc_g1.clone(),
+        })
+    }
+}
+
+
 pub struct Groth16VerifierGadget<PairingE, ConstraintF, P>
     where
         PairingE: PairingEngine,
         ConstraintF: Field,
         P: PairingGadget<PairingE, ConstraintF>,
 {
-    _pairing_engine: PhantomData<PairingE>,
-    _engine:         PhantomData<ConstraintF>,
-    _pairing_gadget: PhantomData<P>,
+    _pairing_engine:          PhantomData<PairingE>,
+    _engine:                  PhantomData<ConstraintF>,
+    _pairing_gadget:          PhantomData<P>,
 }
 
 impl<PairingE, ConstraintF, P, C, V> NIZKVerifierGadget<Groth16<PairingE, C, V>, ConstraintF>
@@ -124,11 +133,12 @@ for Groth16VerifierGadget<PairingE, ConstraintF, P>
         P: PairingGadget<PairingE, ConstraintF>,
 {
     type VerificationKeyGadget = VerifyingKeyGadget<PairingE, ConstraintF, P>;
+    type PreparedVerificationKeyGadget = PreparedVerifyingKeyGadget<PairingE, ConstraintF, P>;
     type ProofGadget = ProofGadget<PairingE, ConstraintF, P>;
 
     fn check_verify<'a, CS, I, T>(
         mut cs: CS,
-        vk: &Self::VerificationKeyGadget,
+        pvk: &Self::PreparedVerificationKeyGadget,
         mut public_inputs: I,
         proof: &Self::ProofGadget,
     ) -> Result<(), SynthesisError>
@@ -137,8 +147,6 @@ for Groth16VerifierGadget<PairingE, ConstraintF, P>
             I: Iterator<Item = &'a T>,
             T: 'a + ToBitsGadget<ConstraintF> + ?Sized,
     {
-        let pvk = vk.prepare(&mut cs.ns(|| "Prepare vk"))?;
-
         let g_ic = {
             let mut cs = cs.ns(|| "Process input");
             let mut g_ic = pvk.gamma_abc_g1[0].clone();
@@ -295,6 +303,7 @@ for ProofGadget<PairingE, ConstraintF, P>
             T: Borrow<Proof<PairingE>>,
     {
         value_gen().and_then(|proof| {
+            //TODO: Can we relax this ?
             let Proof { a, b, c } = proof.borrow().clone();
             let a = P::G1Gadget::alloc_checked(cs.ns(|| "a"), || Ok(a.into_projective()))?;
             let b = P::G2Gadget::alloc_checked(cs.ns(|| "b"), || Ok(b.into_projective()))?;
@@ -365,7 +374,7 @@ for VerifyingKeyGadget<PairingE, ConstraintF, P>
 
 #[cfg(test)]
 mod test {
-    // Note: For MNT4 and MNT6, num_inputs has been set to 2 otherwise, when executing the
+    // Note: For MNT4 and MNT6, num_inputs has been reduced otherwise, when executing the
     // tests simultaneously from the cargo test framework, the memory will run out and the
     // tests execution will crash.
     use proof_systems::groth16::*;
@@ -382,7 +391,7 @@ mod test {
 
 
     struct Bench<F: Field> {
-        inputs:          Vec<Option<F>>,
+        inputs: Vec<Option<F>>,
         num_constraints: usize,
     }
 
@@ -439,6 +448,7 @@ mod test {
         type TestVerifierGadget = Groth16VerifierGadget<Bls12_377, Fq, Bls12_377PairingGadget>;
         type TestProofGadget = ProofGadget<Bls12_377, Fq, Bls12_377PairingGadget>;
         type TestVkGadget = VerifyingKeyGadget<Bls12_377, Fq, Bls12_377PairingGadget>;
+        type TestPvkGadget = PreparedVerifyingKeyGadget<Bls12_377, Fq, Bls12_377PairingGadget>;
 
         let num_inputs = 100;
         let num_constraints = num_inputs;
@@ -491,12 +501,13 @@ mod test {
             }
 
             let vk_gadget = TestVkGadget::alloc_input(cs.ns(|| "Vk"), || Ok(&params.vk)).unwrap();
+            let pvk_gadget = <TestPvkGadget as FromGadget<TestVkGadget, Fq>>::from(vk_gadget, cs.ns(|| "Prepare vk")).unwrap();
             let proof_gadget =
                 TestProofGadget::alloc(cs.ns(|| "Proof"), || Ok(proof.clone())).unwrap();
             println!("Time to verify!\n\n\n\n");
             <TestVerifierGadget as NIZKVerifierGadget<TestProofSystem, Fq>>::check_verify(
                 cs.ns(|| "Verify"),
-                &vk_gadget,
+                &pvk_gadget,
                 input_gadgets.iter(),
                 &proof_gadget,
             )
@@ -513,29 +524,33 @@ mod test {
         }
     }
 
+    //Verify a MNT6 proof in MNT4
     #[test]
     fn mnt4753_groth16_verifier_test() {
         use algebra::{
-            curves::mnt4753::MNT4,
-            fields::mnt4753::{Fq, Fr},
+            curves::mnt6753::MNT6 as BaseCurve,
+            fields::{
+                mnt6753::Fr as BaseField,
+                mnt4753::Fr as VerificationField,
+            },
         };
+        use r1cs_std::pairing::mnt6753::MNT6753PairingGadget as PairingGadget;
 
-        use r1cs_std::pairing::mnt4753::MNT4753PairingGadget;
-
-        type TestProofSystem = Groth16<MNT4, Bench<Fr>, Fr>;
-        type TestVerifierGadget = Groth16VerifierGadget<MNT4, Fq, MNT4753PairingGadget>;
-        type TestProofGadget = ProofGadget<MNT4, Fq, MNT4753PairingGadget>;
-        type TestVkGadget = VerifyingKeyGadget<MNT4, Fq, MNT4753PairingGadget>;
+        type TestProofSystem = Groth16<BaseCurve, Bench<BaseField>, BaseField>;
+        type TestVerifierGadget = Groth16VerifierGadget<BaseCurve, VerificationField, PairingGadget>;
+        type TestProofGadget = ProofGadget<BaseCurve, VerificationField, PairingGadget>;
+        type TestVkGadget = VerifyingKeyGadget<BaseCurve, VerificationField, PairingGadget>;
+        type TestPvkGadget = PreparedVerifyingKeyGadget<BaseCurve, VerificationField, PairingGadget>;
 
         let num_inputs = 2;
         let num_constraints = num_inputs;
         let rng = &mut thread_rng();
-        let mut inputs: Vec<Option<Fr>> = Vec::with_capacity(num_inputs);
+        let mut inputs: Vec<Option<BaseField>> = Vec::with_capacity(num_inputs);
         for _ in 0..num_inputs {
             inputs.push(Some(rng.gen()));
         }
         let params = {
-            let c = Bench::<Fr> {
+            let c = Bench::<BaseField> {
                 inputs: vec![None; num_inputs],
                 num_constraints,
             };
@@ -556,7 +571,7 @@ mod test {
             };
 
             // assert!(!verify_proof(&pvk, &proof, &[a]).unwrap());
-            let mut cs = TestConstraintSystem::<Fq>::new();
+            let mut cs = TestConstraintSystem::<VerificationField>::new();
 
             let inputs: Vec<_> = inputs.into_iter().map(|input| input.unwrap()).collect();
             let mut input_gadgets = Vec::new();
@@ -578,12 +593,13 @@ mod test {
             }
 
             let vk_gadget = TestVkGadget::alloc_input(cs.ns(|| "Vk"), || Ok(&params.vk)).unwrap();
+            let pvk_gadget = <TestPvkGadget as FromGadget<TestVkGadget, VerificationField>>::from(vk_gadget, cs.ns(|| "Prepare vk")).unwrap();
             let proof_gadget =
                 TestProofGadget::alloc(cs.ns(|| "Proof"), || Ok(proof.clone())).unwrap();
             println!("Time to verify!\n\n\n\n");
-            <TestVerifierGadget as NIZKVerifierGadget<TestProofSystem, Fq>>::check_verify(
+            <TestVerifierGadget as NIZKVerifierGadget<TestProofSystem, VerificationField>>::check_verify(
                 cs.ns(|| "Verify"),
-                &vk_gadget,
+                &pvk_gadget,
                 input_gadgets.iter(),
                 &proof_gadget,
             )
@@ -600,29 +616,33 @@ mod test {
         }
     }
 
+    //Verify MNT4 proofs in MNT6
+    use algebra::{
+        curves::mnt4753::MNT4 as BaseCurve,
+        fields::{
+            mnt4753::Fr as BaseField,
+            mnt6753::Fr as VerificationField
+        },
+    };
+    use r1cs_std::pairing::mnt4753::MNT4753PairingGadget as PairingGadget;
+
+    type TestProofSystem = Groth16<BaseCurve, Bench<BaseField>, BaseField>;
+    type TestVerifierGadget = Groth16VerifierGadget<BaseCurve, VerificationField, PairingGadget>;
+    type TestProofGadget = ProofGadget<BaseCurve, VerificationField, PairingGadget>;
+    type TestVkGadget = VerifyingKeyGadget<BaseCurve, VerificationField, PairingGadget>;
+    type TestPvkGadget = PreparedVerifyingKeyGadget<BaseCurve, VerificationField, PairingGadget>;
+
     #[test]
     fn mnt6753_groth16_verifier_test() {
-        use algebra::{
-            curves::mnt6753::MNT6,
-            fields::mnt6753::{Fq, Fr},
-        };
-
-        use r1cs_std::pairing::mnt6753::MNT6753PairingGadget;
-
-        type TestProofSystem = Groth16<MNT6, Bench<Fr>, Fr>;
-        type TestVerifierGadget = Groth16VerifierGadget<MNT6, Fq, MNT6753PairingGadget>;
-        type TestProofGadget = ProofGadget<MNT6, Fq, MNT6753PairingGadget>;
-        type TestVkGadget = VerifyingKeyGadget<MNT6, Fq, MNT6753PairingGadget>;
-
         let num_inputs = 2;
         let num_constraints = num_inputs;
         let rng = &mut thread_rng();
-        let mut inputs: Vec<Option<Fr>> = Vec::with_capacity(num_inputs);
+        let mut inputs: Vec<Option<BaseField>> = Vec::with_capacity(num_inputs);
         for _ in 0..num_inputs {
             inputs.push(Some(rng.gen()));
         }
         let params = {
-            let c = Bench::<Fr> {
+            let c = Bench::<BaseField> {
                 inputs: vec![None; num_inputs],
                 num_constraints,
             };
@@ -643,7 +663,7 @@ mod test {
             };
 
             // assert!(!verify_proof(&pvk, &proof, &[a]).unwrap());
-            let mut cs = TestConstraintSystem::<Fq>::new();
+            let mut cs = TestConstraintSystem::<VerificationField>::new();
 
             let inputs: Vec<_> = inputs.into_iter().map(|input| input.unwrap()).collect();
             let mut input_gadgets = Vec::new();
@@ -665,12 +685,13 @@ mod test {
             }
 
             let vk_gadget = TestVkGadget::alloc_input(cs.ns(|| "Vk"), || Ok(&params.vk)).unwrap();
+            let pvk_gadget = <TestPvkGadget as FromGadget<TestVkGadget, VerificationField>>::from(vk_gadget, cs.ns(|| "Prepare vk")).unwrap();
             let proof_gadget =
                 TestProofGadget::alloc(cs.ns(|| "Proof"), || Ok(proof.clone())).unwrap();
             println!("Time to verify!\n\n\n\n");
-            <TestVerifierGadget as NIZKVerifierGadget<TestProofSystem, Fq>>::check_verify(
+            <TestVerifierGadget as NIZKVerifierGadget<TestProofSystem, VerificationField>>::check_verify(
                 cs.ns(|| "Verify"),
-                &vk_gadget,
+                &pvk_gadget,
                 input_gadgets.iter(),
                 &proof_gadget,
             )
@@ -684,6 +705,41 @@ mod test {
 
             // cs.print_named_objects();
             assert!(cs.is_satisfied());
+
+            //Negative test. Change inputs:
+            let mut inputs: Vec<Option<BaseField>> = Vec::with_capacity(num_inputs);
+            for _ in 0..num_inputs {
+                inputs.push(Some(rng.gen()));
+            }
+
+            let inputs: Vec<_> = inputs.into_iter().map(|input| input.unwrap()).collect();
+            let mut input_gadgets = Vec::new();
+
+            {
+                let mut cs = cs.ns(|| "Allocate wrong inputs");
+                for (i, input) in inputs.into_iter().enumerate() {
+                    let mut input_bits = BitIterator::new(input.into_repr()).collect::<Vec<_>>();
+                    // Input must be in little-endian, but BitIterator outputs in big-endian.
+                    input_bits.reverse();
+
+                    let input_bits =
+                        Vec::<Boolean>::alloc_input(cs.ns(|| format!("Input {}", i)), || {
+                            Ok(input_bits)
+                        })
+                            .unwrap();
+                    input_gadgets.push(input_bits);
+                }
+            }
+
+            <TestVerifierGadget as NIZKVerifierGadget<TestProofSystem, VerificationField>>::check_verify(
+                cs.ns(|| "Wrong Verify"),
+                &pvk_gadget,
+                input_gadgets.iter(),
+                &proof_gadget,
+            )
+                .unwrap();
+
+            assert!(!cs.is_satisfied());
         }
     }
 }

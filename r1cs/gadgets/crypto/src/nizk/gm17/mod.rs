@@ -24,7 +24,7 @@ pub struct Gm17<
 }
 
 impl<E: PairingEngine, C: ConstraintSynthesizer<E::Fr>, V: ToConstraintField<E::Fr> + ?Sized> NIZK
-    for Gm17<E, C, V>
+for Gm17<E, C, V>
 {
     type Circuit = C;
     type AssignedCircuit = C;
@@ -111,6 +111,36 @@ pub struct PreparedVerifyingKeyGadget<
     pub query:      Vec<P::G1Gadget>,
 }
 
+impl <PairingE, ConstraintF, P> FromGadget<VerifyingKeyGadget<PairingE, ConstraintF, P>, ConstraintF>
+for PreparedVerifyingKeyGadget<PairingE, ConstraintF, P>
+    where
+        PairingE: PairingEngine,
+        ConstraintF: Field,
+        P: PairingGadget<PairingE, ConstraintF>,
+{
+    fn from<CS: ConstraintSystem<ConstraintF>>(
+        vk: VerifyingKeyGadget<PairingE, ConstraintF, P>,
+        mut cs: CS
+    ) -> Result<Self, SynthesisError> {
+        let mut cs = cs.ns(|| "Preparing verifying key");
+        let g_alpha_pc = P::prepare_g1(&mut cs.ns(|| "Prepare g_alpha_g1"), &vk.g_alpha_g1)?;
+        let h_beta_pc = P::prepare_g2(&mut cs.ns(|| "Prepare h_beta_g2"), &vk.h_beta_g2)?;
+        let g_gamma_pc = P::prepare_g1(&mut cs.ns(|| "Prepare g_gamma_pc"), &vk.g_gamma_g1)?;
+        let h_gamma_pc = P::prepare_g2(&mut cs.ns(|| "Prepare h_gamma_pc"), &vk.h_gamma_g2)?;
+        let h_pc = P::prepare_g2(&mut cs.ns(|| "Prepare h_pc"), &vk.h_g2)?;
+        Ok(PreparedVerifyingKeyGadget {
+            g_alpha: vk.g_alpha_g1.clone(),
+            h_beta: vk.h_beta_g2.clone(),
+            g_alpha_pc,
+            h_beta_pc,
+            g_gamma_pc,
+            h_gamma_pc,
+            h_pc,
+            query: vk.query.clone(),
+        })
+    }
+}
+
 pub struct Gm17VerifierGadget<PairingE, ConstraintF, P>
     where
         PairingE: PairingEngine,
@@ -132,11 +162,12 @@ for Gm17VerifierGadget<PairingE, ConstraintF, P>
         P: PairingGadget<PairingE, ConstraintF>,
 {
     type VerificationKeyGadget = VerifyingKeyGadget<PairingE, ConstraintF, P>;
+    type PreparedVerificationKeyGadget = PreparedVerifyingKeyGadget<PairingE, ConstraintF, P>;
     type ProofGadget = ProofGadget<PairingE, ConstraintF, P>;
 
     fn check_verify<'a, CS, I, T>(
         mut cs: CS,
-        vk: &Self::VerificationKeyGadget,
+        pvk: &Self::PreparedVerificationKeyGadget,
         mut public_inputs: I,
         proof: &Self::ProofGadget,
     ) -> Result<(), SynthesisError>
@@ -145,7 +176,6 @@ for Gm17VerifierGadget<PairingE, ConstraintF, P>
             I: Iterator<Item = &'a T>,
             T: 'a + ToBitsGadget<ConstraintF> + ?Sized,
     {
-        let pvk = vk.prepare(&mut cs.ns(|| "Prepare vk"))?;
         // e(A*G^{alpha}, B*H^{beta}) = e(G^{alpha}, H^{beta}) * e(G^{psi}, H^{gamma}) *
         // e(C, H) where psi = \sum_{i=0}^l input_i pvk.query[i]
 
@@ -473,6 +503,7 @@ mod test {
     type TestVerifierGadget = Gm17VerifierGadget<Bls12_377, Fq, Bls12_377PairingGadget>;
     type TestProofGadget = ProofGadget<Bls12_377, Fq, Bls12_377PairingGadget>;
     type TestVkGadget = VerifyingKeyGadget<Bls12_377, Fq, Bls12_377PairingGadget>;
+    type TestPvkGadget = PreparedVerifyingKeyGadget<Bls12_377, Fq, Bls12_377PairingGadget>;
 
     struct Bench<F: Field> {
         inputs:          Vec<Option<F>>,
@@ -573,12 +604,13 @@ mod test {
             }
 
             let vk_gadget = TestVkGadget::alloc_input(cs.ns(|| "Vk"), || Ok(&params.vk)).unwrap();
+            let pvk_gadget = <TestPvkGadget as FromGadget<TestVkGadget, Fq>>::from(vk_gadget, cs.ns(|| "Prepare vk")).unwrap();
             let proof_gadget =
                 TestProofGadget::alloc(cs.ns(|| "Proof"), || Ok(proof.clone())).unwrap();
             println!("Time to verify!\n\n\n\n");
             <TestVerifierGadget as NIZKVerifierGadget<TestProofSystem, Fq>>::check_verify(
                 cs.ns(|| "Verify"),
-                &vk_gadget,
+                &pvk_gadget,
                 input_gadgets.iter(),
                 &proof_gadget,
             )

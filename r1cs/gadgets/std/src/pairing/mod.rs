@@ -1,5 +1,5 @@
 use crate::prelude::*;
-use algebra::{Field, PairingEngine};
+use algebra::{Field, PairingEngine, PairingCurve};
 use r1cs_core::{ConstraintSystem, SynthesisError};
 use std::fmt::Debug;
 
@@ -63,6 +63,48 @@ pub trait PairingGadget<PairingE: PairingEngine, ConstraintF: Field> {
         cs: CS,
         q: &Self::G2Gadget,
     ) -> Result<Self::G2PreparedGadget, SynthesisError>;
+}
+
+pub trait ConstantPairingGadget<PairingE: PairingEngine, ConstraintF: Field, P: PairingGadget<PairingE, ConstraintF>>:
+{
+
+    type G1ConstantGadget:          GroupGadget<PairingE::G1Projective, ConstraintF, Value = PairingE::G1Projective> +
+                                    ConstantGadget<PairingE::G1Projective, ConstraintF>;
+
+    type G2PreparedConstantGadget:  ConstantGadget<<PairingE::G2Affine as PairingCurve>::Prepared, ConstraintF> +
+                                    CondSelectGadget<ConstraintF> +
+                                    ToBytesGadget<ConstraintF> +
+                                    Clone + Debug + Eq + PartialEq;
+
+    type GTConstantGadget:          FieldGadget<PairingE::Fqk, ConstraintF> +
+                                    CondSelectGadget<ConstraintF> +
+                                    ConstantGadget<PairingE::Fqk, ConstraintF> +
+                                    Clone;
+
+
+    fn miller_loop_with_constant_q<CS: ConstraintSystem<ConstraintF>>(
+        cs: CS,
+        p: &[P::G1PreparedGadget],
+        q: &[Self::G2PreparedConstantGadget],
+    ) -> Result<P::GTGadget, SynthesisError>;
+
+    //Functions for interoperability with PairingGadget
+
+    fn prepare_g1<CS: ConstraintSystem<ConstraintF>>(
+        cs: CS,
+        q: &Self::G1ConstantGadget,
+    ) -> Result<P::G1PreparedGadget, SynthesisError>;
+
+    fn final_exponentiation<CS: ConstraintSystem<ConstraintF>>(
+        cs: CS,
+        p: &P::GTGadget,
+    ) -> Result<Self::GTConstantGadget, SynthesisError>;
+
+    fn cast_to_g2_prepared_gadget(from: &Self::G2PreparedConstantGadget) -> P::G2PreparedGadget;
+
+    fn cast_to_g1_gadget(from: &Self::G1ConstantGadget) -> P::G1Gadget;
+
+    fn cast_to_gt_gadget(from: &Self::GTConstantGadget) -> P::GTGadget;
 }
 
 #[cfg(test)]

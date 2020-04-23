@@ -137,3 +137,11 @@ pub trait ConstantGadget<V, ConstraintF: Field>
 
     fn get_constant(&self) -> V;
 }
+
+pub trait FromGadget<T, ConstraintF: Field>
+    where
+        Self: Sized,
+        T: Sized,
+{
+    fn from<CS: ConstraintSystem<ConstraintF>>(_: T, cs: CS) -> Result<Self, SynthesisError>;
+}
