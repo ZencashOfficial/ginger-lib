@@ -191,6 +191,7 @@ impl<P: MNT4Parameters> ConstantPairingGadget<MNT4p<P>, P::Fp, MNT4PairingGadget
     type G2PreparedConstantGadget = G2PreparedGadget<P>;
     type GTConstantGadget = Fp4G<P>;
 
+    //TODO: Review this carefully
     fn miller_loop_with_constant_q<CS: ConstraintSystem<P::Fp>>(
         mut cs: CS,
         p: &[G1PreparedGadget<P>],
