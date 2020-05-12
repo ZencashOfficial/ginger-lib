@@ -1,3 +1,13 @@
+/*
+AffineGadget for short Weierstrass model using Jacobi coordinates. Implementations of the
+    - GroupGadget:
+         - incomplete addition in add and add_constant gadget,
+         - 2-bit and 3-bit (signed) lookup table fixed base exponentiation,
+    - AllocGadget (including group membership test) and ConstantsGadget
+    - relational gadgets: NEq!
+    - ToBits FromBits gadgets
+*/
+
 use algebra::{
     curves::short_weierstrass_jacobian::{GroupAffine as SWAffine, GroupProjective as SWProjective},
     SWModelParameters,
@@ -325,73 +335,10 @@ impl<P, ConstraintF, F> CondSelectGadget<ConstraintF> for AffineGadget<P, Constr
     }
 }
 
-impl<P, ConstraintF, F> EqGadget<ConstraintF> for AffineGadget<P, ConstraintF, F>
-    where
-        P: SWModelParameters,
-        ConstraintF: Field,
-        F: FieldGadget<P::BaseField, ConstraintF>,
-{
-}
+/*
+Alloc- and ConstantsGadget for AffineGadget
+*/
 
-impl<P, ConstraintF, F> ConditionalEqGadget<ConstraintF> for AffineGadget<P, ConstraintF, F>
-    where
-        P: SWModelParameters,
-        ConstraintF: Field,
-        F: FieldGadget<P::BaseField, ConstraintF>,
-{
-    #[inline]
-    fn conditional_enforce_equal<CS: ConstraintSystem<ConstraintF>>(
-        &self,
-        mut cs: CS,
-        other: &Self,
-        condition: &Boolean,
-    ) -> Result<(), SynthesisError> {
-        self.x.conditional_enforce_equal(
-            &mut cs.ns(|| "X Coordinate Conditional Equality"),
-            &other.x,
-            condition,
-        )?;
-        self.y.conditional_enforce_equal(
-            &mut cs.ns(|| "Y Coordinate Conditional Equality"),
-            &other.y,
-            condition,
-        )?;
-        self.infinity.conditional_enforce_equal(
-            &mut cs.ns(|| "Infinity Conditional Equality"),
-            &other.infinity,
-            condition,
-        )?;
-        Ok(())
-    }
-
-    fn cost() -> usize {
-        2 * <F as ConditionalEqGadget<ConstraintF>>::cost()
-    }
-}
-
-impl<P, ConstraintF, F> NEqGadget<ConstraintF> for AffineGadget<P, ConstraintF, F>
-    where
-        P: SWModelParameters,
-        ConstraintF: Field,
-        F: FieldGadget<P::BaseField, ConstraintF>,
-{
-    #[inline]
-    fn enforce_not_equal<CS: ConstraintSystem<ConstraintF>>(
-        &self,
-        mut cs: CS,
-        other: &Self,
-    ) -> Result<(), SynthesisError> {
-        self.x
-            .enforce_not_equal(&mut cs.ns(|| "X Coordinate Inequality"), &other.x)?;
-        self.y
-            .enforce_not_equal(&mut cs.ns(|| "Y Coordinate Inequality"), &other.y)?;
-        Ok(())
-    }
-
-    fn cost() -> usize {
-        2 * <F as NEqGadget<ConstraintF>>::cost()
-    }
-}
 
 impl<P, ConstraintF, F> AllocGadget<SWProjective<P>, ConstraintF>
 for AffineGadget<P, ConstraintF, F>
@@ -480,77 +427,77 @@ for AffineGadget<P, ConstraintF, F>
             T: Borrow<SWProjective<P>>,
     {
         let alloc_and_prime_order_check =
-        |mut cs: r1cs_core::Namespace<_, _>, value_gen: FN| -> Result<Self, SynthesisError> {
-            let cofactor_weight = BitIterator::new(P::COFACTOR).filter(|b| *b).count();
-            // If we multiply by r, we actually multiply by r - 2.
-            let r_minus_1 = (-P::ScalarField::one()).into_repr();
-            let r_weight = BitIterator::new(&r_minus_1).filter(|b| *b).count();
+            |mut cs: r1cs_core::Namespace<_, _>, value_gen: FN| -> Result<Self, SynthesisError> {
+                let cofactor_weight = BitIterator::new(P::COFACTOR).filter(|b| *b).count();
+                // If we multiply by r, we actually multiply by r - 2.
+                let r_minus_1 = (-P::ScalarField::one()).into_repr();
+                let r_weight = BitIterator::new(&r_minus_1).filter(|b| *b).count();
 
-            // We pick the most efficient method of performing the prime order check:
-            // If the cofactor has lower hamming weight than the scalar field's modulus,
-            // we first multiply by the inverse of the cofactor, and then, after allocating,
-            // multiply by the cofactor. This ensures the resulting point has no cofactors
-            //
-            // Else, we multiply by the scalar field's modulus and ensure that the result
-            // is zero.
-            if cofactor_weight < r_weight {
-                let ge = Self::alloc(cs.ns(|| "Alloc checked"), || {
-                    value_gen().map(|ge| {
-                        ge.borrow()
-                            .into_affine()
-                            .mul_by_cofactor_inv()
-                            .into_projective()
-                    })
-                })?;
-                let mut seen_one = false;
-                let mut result = Self::zero(cs.ns(|| "result"))?;
-                for (i, b) in BitIterator::new(P::COFACTOR).enumerate() {
-                    let mut cs = cs.ns(|| format!("Iteration {}", i));
+                // We pick the most efficient method of performing the prime order check:
+                // If the cofactor has lower hamming weight than the scalar field's modulus,
+                // we first multiply by the inverse of the cofactor, and then, after allocating,
+                // multiply by the cofactor. This ensures the resulting point has no cofactors
+                //
+                // Else, we multiply by the scalar field's modulus and ensure that the result
+                // is zero.
+                if cofactor_weight < r_weight {
+                    let ge = Self::alloc(cs.ns(|| "Alloc checked"), || {
+                        value_gen().map(|ge| {
+                            ge.borrow()
+                                .into_affine()
+                                .mul_by_cofactor_inv()
+                                .into_projective()
+                        })
+                    })?;
+                    let mut seen_one = false;
+                    let mut result = Self::zero(cs.ns(|| "result"))?;
+                    for (i, b) in BitIterator::new(P::COFACTOR).enumerate() {
+                        let mut cs = cs.ns(|| format!("Iteration {}", i));
 
-                    let old_seen_one = seen_one;
-                    if seen_one {
-                        result.double_in_place(cs.ns(|| "Double"))?;
-                    } else {
-                        seen_one = b;
-                    }
-
-                    if b {
-                        result = if old_seen_one {
-                            result.add(cs.ns(|| "Add"), &ge)?
+                        let old_seen_one = seen_one;
+                        if seen_one {
+                            result.double_in_place(cs.ns(|| "Double"))?;
                         } else {
-                            ge.clone()
-                        };
-                    }
-                }
-                Ok(result)
-            } else {
-                let ge = Self::alloc(cs.ns(|| "Alloc checked"), value_gen)?;
-                let mut seen_one = false;
-                let mut result = Self::zero(cs.ns(|| "result"))?;
-                // Returns bits in big-endian order
-                for (i, b) in BitIterator::new(r_minus_1).enumerate() {
-                    let mut cs = cs.ns(|| format!("Iteration {}", i));
+                            seen_one = b;
+                        }
 
-                    let old_seen_one = seen_one;
-                    if seen_one {
-                        result.double_in_place(cs.ns(|| "Double"))?;
-                    } else {
-                        seen_one = b;
+                        if b {
+                            result = if old_seen_one {
+                                result.add(cs.ns(|| "Add"), &ge)?
+                            } else {
+                                ge.clone()
+                            };
+                        }
                     }
+                    Ok(result)
+                } else {
+                    let ge = Self::alloc(cs.ns(|| "Alloc checked"), value_gen)?;
+                    let mut seen_one = false;
+                    let mut result = Self::zero(cs.ns(|| "result"))?;
+                    // Returns bits in big-endian order
+                    for (i, b) in BitIterator::new(r_minus_1).enumerate() {
+                        let mut cs = cs.ns(|| format!("Iteration {}", i));
 
-                    if b {
-                        result = if old_seen_one {
-                            result.add(cs.ns(|| "Add"), &ge)?
+                        let old_seen_one = seen_one;
+                        if seen_one {
+                            result.double_in_place(cs.ns(|| "Double"))?;
                         } else {
-                            ge.clone()
-                        };
+                            seen_one = b;
+                        }
+
+                        if b {
+                            result = if old_seen_one {
+                                result.add(cs.ns(|| "Add"), &ge)?
+                            } else {
+                                ge.clone()
+                            };
+                        }
                     }
+                    let neg_ge = ge.negate(cs.ns(|| "Negate ge"))?;
+                    neg_ge.enforce_equal(cs.ns(|| "Check equals"), &result)?;
+                    Ok(ge)
                 }
-                let neg_ge = ge.negate(cs.ns(|| "Negate ge"))?;
-                neg_ge.enforce_equal(cs.ns(|| "Check equals"), &result)?;
-                Ok(ge)
-            }
-        };
+            };
 
         let ge = alloc_and_prime_order_check(
             cs.ns(|| "alloc and prime order check"),
@@ -647,6 +594,82 @@ impl<P, ConstraintF, F> ConstantGadget<SWProjective<P>, ConstraintF> for AffineG
         SWProjective::<P>::new(x, y, z)
     }
 }
+
+/*
+relational and conditional gadgets for AffineGadget
+*/
+
+impl<P, ConstraintF, F> EqGadget<ConstraintF> for AffineGadget<P, ConstraintF, F>
+    where
+        P: SWModelParameters,
+        ConstraintF: Field,
+        F: FieldGadget<P::BaseField, ConstraintF>,
+{
+}
+
+impl<P, ConstraintF, F> ConditionalEqGadget<ConstraintF> for AffineGadget<P, ConstraintF, F>
+    where
+        P: SWModelParameters,
+        ConstraintF: Field,
+        F: FieldGadget<P::BaseField, ConstraintF>,
+{
+    #[inline]
+    fn conditional_enforce_equal<CS: ConstraintSystem<ConstraintF>>(
+        &self,
+        mut cs: CS,
+        other: &Self,
+        condition: &Boolean,
+    ) -> Result<(), SynthesisError> {
+        self.x.conditional_enforce_equal(
+            &mut cs.ns(|| "X Coordinate Conditional Equality"),
+            &other.x,
+            condition,
+        )?;
+        self.y.conditional_enforce_equal(
+            &mut cs.ns(|| "Y Coordinate Conditional Equality"),
+            &other.y,
+            condition,
+        )?;
+        self.infinity.conditional_enforce_equal(
+            &mut cs.ns(|| "Infinity Conditional Equality"),
+            &other.infinity,
+            condition,
+        )?;
+        Ok(())
+    }
+
+    fn cost() -> usize {
+        2 * <F as ConditionalEqGadget<ConstraintF>>::cost()
+    }
+}
+
+impl<P, ConstraintF, F> NEqGadget<ConstraintF> for AffineGadget<P, ConstraintF, F>
+    where
+        P: SWModelParameters,
+        ConstraintF: Field,
+        F: FieldGadget<P::BaseField, ConstraintF>,
+{
+    #[inline]
+    fn enforce_not_equal<CS: ConstraintSystem<ConstraintF>>(
+        &self,
+        mut cs: CS,
+        other: &Self,
+    ) -> Result<(), SynthesisError> {
+        self.x
+            .enforce_not_equal(&mut cs.ns(|| "X Coordinate Inequality"), &other.x)?;
+        self.y
+            .enforce_not_equal(&mut cs.ns(|| "Y Coordinate Inequality"), &other.y)?;
+        Ok(())
+    }
+
+    fn cost() -> usize {
+        2 * <F as NEqGadget<ConstraintF>>::cost()
+    }
+}
+
+/*
+unpacking gadgets for AffineGadget
+*/
 
 impl<P, ConstraintF, F> ToBitsGadget<ConstraintF> for AffineGadget<P, ConstraintF, F>
     where
