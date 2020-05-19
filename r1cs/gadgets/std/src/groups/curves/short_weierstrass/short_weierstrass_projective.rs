@@ -1,3 +1,13 @@
+/*
+AffineGadget for short Weierstrass model, and implementations of the
+    - GroupGadget:
+         - incomplete addition in add and add_constant gadget
+         - 2-bit and 3-bit (signed) lookup table fixed base exponentiation
+    - AllocGadget (including group membership test) and ConstantsGadget
+    - relational gadgets: NEq!
+    - ToBits FromBits gadgets
+*/
+
 use algebra::{
     curves::short_weierstrass_projective::{GroupAffine as SWAffine, GroupProjective as SWProjective},
     SWModelParameters,
@@ -22,6 +32,26 @@ pub struct AffineGadget<
     _engine: PhantomData<ConstraintF>,
 }
 
+
+impl<P, ConstraintF, F> PartialEq for AffineGadget<P, ConstraintF, F>
+    where
+        P: SWModelParameters,
+        ConstraintF: Field,
+        F: FieldGadget<P::BaseField, ConstraintF>,
+{
+    fn eq(&self, other: &Self) -> bool {
+        self.x == other.x && self.y == other.y
+    }
+}
+
+impl<P, ConstraintF, F> Eq for AffineGadget<P, ConstraintF, F>
+    where
+        P: SWModelParameters,
+        ConstraintF: Field,
+        F: FieldGadget<P::BaseField, ConstraintF>,
+{
+}
+
 impl<P, ConstraintF, F> AffineGadget<P, ConstraintF, F>
     where
         P: SWModelParameters,
@@ -39,27 +69,25 @@ impl<P, ConstraintF, F> AffineGadget<P, ConstraintF, F>
         }
     }
 
+    /* Incomplete, unsafe addition, saving one constraint with respect to add.
+    WARINING: ONLY USE if affine points P = self and Q = other are guaranteed to satisfy
+        P.x != Q.x.
+    If this requirement is not met, the constraints of add_unsafe do not even enforce that
+    Result is on the curve.
+    */
     #[inline]
-    /// Incomplete addition: neither `self` nor `other` can be the neutral
-    /// element.
     pub fn add_unsafe<CS: ConstraintSystem<ConstraintF>>(
         &self,
         mut cs: CS,
         other: &Self,
     ) -> Result<Self, SynthesisError> {
-        // lambda = (B.y - A.y)/(B.x - A.x)
-        // C.x = lambda^2 - A.x - B.x
-        // C.y = lambda(A.x - C.x) - A.y
-        //
-        // Special cases:
-        //
-        // doubling: if B.y = A.y and B.x = A.x then lambda is unbound and
-        // C = (lambda^2, lambda^3)
-        //
-        // addition of negative point: if B.y = -A.y and B.x = A.x then no
-        // lambda can satisfy the first equation unless B.y - A.y = 0. But
-        // then this reduces to doubling.
-
+        /* Prepare values lambda, x3 and y3 according to the constraints
+            (1) lambda * (x2 - x_1) = y2 - y1
+            (2) lambda^2 = x1 + x2 + x3,
+            (3) lambda*(x1 - x3) = y3 + y1.
+        Note that constraint (1) doesn't enforce anything on lambda if x1 = x2. In particular, the
+        result point (x3,y3) does not even have to be on the curve.
+        */
         let x2_minus_x1 = other.x.sub(cs.ns(|| "x2 - x1"), &self.x)?;
         let y2_minus_y1 = other.y.sub(cs.ns(|| "y2 - y1"), &self.y)?;
 
@@ -82,16 +110,16 @@ impl<P, ConstraintF, F> AffineGadget<P, ConstraintF, F>
             Ok(lambda_val * &(x_1 - &x_3) - &y_1)
         })?;
 
-        // Check lambda
+        // Constraint 1: lambda * (x2 - x_1) = y2 - y1
         lambda.mul_equals(cs.ns(|| "check lambda"), &x2_minus_x1, &y2_minus_y1)?;
 
-        // Check x3
+        // Constraint 2: lambda^2 = x1 + x2 + x3
         let x3_plus_x1_plus_x2 = x_3
             .add(cs.ns(|| "x3 + x1"), &self.x)?
             .add(cs.ns(|| "x3 + x1 + x2"), &other.x)?;
         lambda.mul_equals(cs.ns(|| "check x3"), &lambda, &x3_plus_x1_plus_x2)?;
 
-        // Check y3
+        // Constraint 3: y3 + y1 = lambda*(x1 - x3)
         let y3_plus_y1 = y_3.add(cs.ns(|| "y3 + y1"), &self.y)?;
         let x1_minus_x3 = self.x.sub(cs.ns(|| "x1 - x3"), &x_3)?;
 
@@ -101,24 +129,6 @@ impl<P, ConstraintF, F> AffineGadget<P, ConstraintF, F>
     }
 }
 
-impl<P, ConstraintF, F> PartialEq for AffineGadget<P, ConstraintF, F>
-    where
-        P: SWModelParameters,
-        ConstraintF: Field,
-        F: FieldGadget<P::BaseField, ConstraintF>,
-{
-    fn eq(&self, other: &Self) -> bool {
-        self.x == other.x && self.y == other.y
-    }
-}
-
-impl<P, ConstraintF, F> Eq for AffineGadget<P, ConstraintF, F>
-    where
-        P: SWModelParameters,
-        ConstraintF: Field,
-        F: FieldGadget<P::BaseField, ConstraintF>,
-{
-}
 
 impl<P, ConstraintF, F> GroupGadget<SWProjective<P>, ConstraintF>
 for AffineGadget<P, ConstraintF, F>
@@ -156,8 +166,10 @@ for AffineGadget<P, ConstraintF, F>
     }
 
     #[inline]
-    /// Incomplete addition: neither `self` nor `other` can be the neutral
-    /// element.
+    /* Incomplete addition for affine points P = self and Q = other,
+    sets up unsatisfiable constraints if P.x = Q.x.
+    WARNING: only use when guaranteed that P and Q are not equal to infinity.
+     */
     fn add<CS: ConstraintSystem<ConstraintF>>(
         &self,
         mut cs: CS,
@@ -166,29 +178,21 @@ for AffineGadget<P, ConstraintF, F>
         // lambda = (B.y - A.y)/(B.x - A.x)
         // C.x = lambda^2 - A.x - B.x
         // C.y = lambda(A.x - C.x) - A.y
-        //
-        // Special cases:
-        //
-        // doubling: if B.y = A.y and B.x = A.x then lambda is unbound and
-        // C = (lambda^2, lambda^3)
-        //
-        // addition of negative point: if B.y = -A.y and B.x = A.x then no
-        // lambda can satisfy the first equation unless B.y - A.y = 0. But
-        // then this reduces to doubling.
-        //
-        // So we need to check that A.x - B.x != 0, which can be done by
-        // enforcing I * (B.x - A.x) = 1
-        // This is done below when we calculate inv (by F::inverse)
 
         let x2_minus_x1 = other.x.sub(cs.ns(|| "x2 - x1"), &self.x)?;
         let y2_minus_y1 = other.y.sub(cs.ns(|| "y2 - y1"), &self.y)?;
 
+        // F::inverse allocates a FieldGadget inv and adds the constraint
+        //      inv * (x2 - x1) = 1
+        // to the CS, which is not satisfyable if x1 = x2.
         let inv = x2_minus_x1.inverse(cs.ns(|| "compute inv"))?;
 
+        // constraint 2
         let lambda = F::alloc(cs.ns(|| "lambda"), || {
             Ok(y2_minus_y1.get_value().get()? * &inv.get_value().get()?)
         })?;
 
+        // constraint 3
         let x_3 = F::alloc(&mut cs.ns(|| "x_3"), || {
             let lambda_val = lambda.get_value().get()?;
             let x1 = self.x.get_value().get()?;
@@ -196,6 +200,7 @@ for AffineGadget<P, ConstraintF, F>
             Ok((lambda_val.square() - &x1) - &x2)
         })?;
 
+        // constraint 4
         let y_3 = F::alloc(&mut cs.ns(|| "y_3"), || {
             let lambda_val = lambda.get_value().get()?;
             let x_1 = self.x.get_value().get()?;
@@ -536,99 +541,9 @@ for AffineGadget<P, ConstraintF, F>
     }
 }
 
-impl<P, ConstraintF, F> CondSelectGadget<ConstraintF> for AffineGadget<P, ConstraintF, F>
-    where
-        P: SWModelParameters,
-        ConstraintF: Field,
-        F: FieldGadget<P::BaseField, ConstraintF>,
-{
-    #[inline]
-    fn conditionally_select<CS: ConstraintSystem<ConstraintF>>(
-        mut cs: CS,
-        cond: &Boolean,
-        first: &Self,
-        second: &Self,
-    ) -> Result<Self, SynthesisError> {
-        let x = F::conditionally_select(&mut cs.ns(|| "x"), cond, &first.x, &second.x)?;
-        let y = F::conditionally_select(&mut cs.ns(|| "y"), cond, &first.y, &second.y)?;
-        let infinity = Boolean::conditionally_select(&mut cs.ns(|| "infinity"), cond, &first.infinity, &second.infinity)?;
-
-        Ok(Self::new(x, y, infinity))
-    }
-
-    fn cost() -> usize {
-        2 * <F as CondSelectGadget<ConstraintF>>::cost() +
-            <Boolean as CondSelectGadget<ConstraintF>>::cost()
-    }
-}
-
-impl<P, ConstraintF, F> EqGadget<ConstraintF> for AffineGadget<P, ConstraintF, F>
-    where
-        P: SWModelParameters,
-        ConstraintF: Field,
-        F: FieldGadget<P::BaseField, ConstraintF>,
-{
-}
-
-impl<P, ConstraintF, F> ConditionalEqGadget<ConstraintF> for AffineGadget<P, ConstraintF, F>
-    where
-        P: SWModelParameters,
-        ConstraintF: Field,
-        F: FieldGadget<P::BaseField, ConstraintF>,
-{
-    #[inline]
-    fn conditional_enforce_equal<CS: ConstraintSystem<ConstraintF>>(
-        &self,
-        mut cs: CS,
-        other: &Self,
-        condition: &Boolean,
-    ) -> Result<(), SynthesisError> {
-        self.x.conditional_enforce_equal(
-            &mut cs.ns(|| "X Coordinate Conditional Equality"),
-            &other.x,
-            condition,
-        )?;
-        self.y.conditional_enforce_equal(
-            &mut cs.ns(|| "Y Coordinate Conditional Equality"),
-            &other.y,
-            condition,
-        )?;
-        self.infinity.conditional_enforce_equal(
-            &mut cs.ns(|| "Infinity Conditional Equality"),
-            &other.infinity,
-            condition,
-        )?;
-        Ok(())
-    }
-
-    fn cost() -> usize {
-        2 * <F as ConditionalEqGadget<ConstraintF>>::cost()
-    }
-}
-
-impl<P, ConstraintF, F> NEqGadget<ConstraintF> for AffineGadget<P, ConstraintF, F>
-    where
-        P: SWModelParameters,
-        ConstraintF: Field,
-        F: FieldGadget<P::BaseField, ConstraintF>,
-{
-    #[inline]
-    fn enforce_not_equal<CS: ConstraintSystem<ConstraintF>>(
-        &self,
-        mut cs: CS,
-        other: &Self,
-    ) -> Result<(), SynthesisError> {
-        self.x
-            .enforce_not_equal(&mut cs.ns(|| "X Coordinate Inequality"), &other.x)?;
-        self.y
-            .enforce_not_equal(&mut cs.ns(|| "Y Coordinate Inequality"), &other.y)?;
-        Ok(())
-    }
-
-    fn cost() -> usize {
-        2 * <F as NEqGadget<ConstraintF>>::cost()
-    }
-}
+/*
+Alloc- and ConstantGadget for AffineGadget
+*/
 
 impl<P, ConstraintF, F> AllocGadget<SWProjective<P>, ConstraintF>
 for AffineGadget<P, ConstraintF, F>
@@ -882,6 +797,111 @@ impl<P, ConstraintF, F> ConstantGadget<SWProjective<P>, ConstraintF> for AffineG
         SWProjective::<P>::new(x, y, z)
     }
 }
+
+
+/*
+relational and conditional gadgets, including
+*/
+
+impl<P, ConstraintF, F> EqGadget<ConstraintF> for AffineGadget<P, ConstraintF, F>
+    where
+        P: SWModelParameters,
+        ConstraintF: Field,
+        F: FieldGadget<P::BaseField, ConstraintF>,
+{
+}
+
+impl<P, ConstraintF, F> CondSelectGadget<ConstraintF> for AffineGadget<P, ConstraintF, F>
+    where
+        P: SWModelParameters,
+        ConstraintF: Field,
+        F: FieldGadget<P::BaseField, ConstraintF>,
+{
+    #[inline]
+    fn conditionally_select<CS: ConstraintSystem<ConstraintF>>(
+        mut cs: CS,
+        cond: &Boolean,
+        first: &Self,
+        second: &Self,
+    ) -> Result<Self, SynthesisError> {
+        let x = F::conditionally_select(&mut cs.ns(|| "x"), cond, &first.x, &second.x)?;
+        let y = F::conditionally_select(&mut cs.ns(|| "y"), cond, &first.y, &second.y)?;
+        let infinity = Boolean::conditionally_select(&mut cs.ns(|| "infinity"), cond, &first.infinity, &second.infinity)?;
+
+        Ok(Self::new(x, y, infinity))
+    }
+
+    fn cost() -> usize {
+        2 * <F as CondSelectGadget<ConstraintF>>::cost() +
+            <Boolean as CondSelectGadget<ConstraintF>>::cost()
+    }
+}
+
+impl<P, ConstraintF, F> ConditionalEqGadget<ConstraintF> for AffineGadget<P, ConstraintF, F>
+    where
+        P: SWModelParameters,
+        ConstraintF: Field,
+        F: FieldGadget<P::BaseField, ConstraintF>,
+{
+    #[inline]
+    fn conditional_enforce_equal<CS: ConstraintSystem<ConstraintF>>(
+        &self,
+        mut cs: CS,
+        other: &Self,
+        condition: &Boolean,
+    ) -> Result<(), SynthesisError> {
+        self.x.conditional_enforce_equal(
+            &mut cs.ns(|| "X Coordinate Conditional Equality"),
+            &other.x,
+            condition,
+        )?;
+        self.y.conditional_enforce_equal(
+            &mut cs.ns(|| "Y Coordinate Conditional Equality"),
+            &other.y,
+            condition,
+        )?;
+        self.infinity.conditional_enforce_equal(
+            &mut cs.ns(|| "Infinity Conditional Equality"),
+            &other.infinity,
+            condition,
+        )?;
+        Ok(())
+    }
+
+    fn cost() -> usize {
+        2 * <F as ConditionalEqGadget<ConstraintF>>::cost()
+    }
+}
+
+// enforces non-equality of both x and y coordinates of an AffineGadget
+// assumes
+impl<P, ConstraintF, F> NEqGadget<ConstraintF> for AffineGadget<P, ConstraintF, F>
+    where
+        P: SWModelParameters,
+        ConstraintF: Field,
+        F: FieldGadget<P::BaseField, ConstraintF>,
+{
+    #[inline]
+    fn enforce_not_equal<CS: ConstraintSystem<ConstraintF>>(
+        &self,
+        mut cs: CS,
+        other: &Self,
+    ) -> Result<(), SynthesisError> {
+        self.x
+            .enforce_not_equal(&mut cs.ns(|| "X Coordinate Inequality"), &other.x)?;
+        self.y
+            .enforce_not_equal(&mut cs.ns(|| "Y Coordinate Inequality"), &other.y)?;
+        Ok(())
+    }
+
+    fn cost() -> usize {
+        2 * <F as NEqGadget<ConstraintF>>::cost()
+    }
+}
+
+/*
+packing and unpacking gadgets for AffineGadget
+*/
 
 impl<P, ConstraintF, F> ToBitsGadget<ConstraintF> for AffineGadget<P, ConstraintF, F>
     where

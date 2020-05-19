@@ -1,3 +1,8 @@
+/*
+Def. GroupAffine and GroupProjective and their CurveAffine/CurveProjective implementation
+for short Weierstrass curve.
+*/
+
 use rand::{Rng, distributions::{Standard, Distribution}};
 use crate::{UniformRand, ToCompressedBits, FromCompressedBits, Error, BitSerializationError};
 use crate::curves::models::SWModelParameters as Parameters;

@@ -1,3 +1,13 @@
+/*
+GroupGadget:
+    - interfaces for group arithmetics and
+    - default implementations for variable and fixed base exponentiation, as well as
+    - the interface for 3-bit lookup table fixed base exponentiation.
+There is also a default implementation for multi-scalar multi-base exponentiation as used by the
+Pedersen CRH/commitment scheme -> better move it to there (see comments below).
+Can be improved by providing a generic implementation for 3-bit (signed) lookup table exponentiation.
+*/
+
 use crate::prelude::*;
 use algebra::{Field, Group};
 use r1cs_core::{ConstraintSystem, SynthesisError};
@@ -69,10 +79,13 @@ pub trait GroupGadget<G: Group, ConstraintF: Field>:
 
     fn negate<CS: ConstraintSystem<ConstraintF>>(&self, cs: CS) -> Result<Self, SynthesisError>;
 
-    /// Variable base exponentiation.
-    /// Inputs must be specified in *little-endian* form.
-    /// If the addition law is incomplete for the identity element,
-    /// `result` must not be the identity element.
+
+    /* Exponentiation of an element P via linear combination of 2^i-th powers of P,
+    given the scalar as little endian vector of Booleans b_0, b_1, ..., b_{l-1}:
+        result = b_0 * P + b_1 * (2*P) + b_2 * (4*P) + ... + b_{l-1} * (2^{2^l}*P)
+    Uses add, which in this generic implementation is assumed to be complete addition.
+    WARNING: If add is incomplete then one has to have control over exceptional cases!
+    */
     fn mul_bits<'a, CS: ConstraintSystem<ConstraintF>>(
         &self,
         mut cs: CS,
@@ -82,6 +95,8 @@ pub trait GroupGadget<G: Group, ConstraintF: Field>:
         let mut power = self.clone();
         let mut result = result.clone();
         for (i, bit) in bits.enumerate() {
+            // as this circuit is generic, one has to compute add in every single loop anyway,
+            // even if not taken into account
             let new_encoded = result.add(&mut cs.ns(|| format!("Add {}-th power", i)), &power)?;
             result = Self::conditionally_select(
                 &mut cs.ns(|| format!("Select {}", i)),
@@ -94,6 +109,12 @@ pub trait GroupGadget<G: Group, ConstraintF: Field>:
         Ok(result)
     }
 
+    /* Fixed base exponentiation via linear combination of precomputed 2^i-th powers of B,
+    given a scalar as little endian vector of Booleans b_0, b_1, ..., b_{l-1}:
+        result = b_0 * B + b_1 * (2*B) + b_2 * (4*B) + ... + b_{l-1} * (2^{2^l}*B)
+    Uses add, which in this generic implementation is assumed to be complete addition.
+    WARNING: If add is incomplete then one has to have control over exceptional cases!
+    */
     fn precomputed_base_scalar_mul<'a, CS, I, B>(
         &mut self,
         mut cs: CS,
@@ -120,10 +141,8 @@ pub trait GroupGadget<G: Group, ConstraintF: Field>:
         Ok(())
     }
 
-    /// Fixed base exponentiation, slighlty different interface from
-    /// `precomputed_base_scalar_mul`. Inputs must be specified in
-    /// *little-endian* form. If the addition law is incomplete for
-    /// the identity element, `result` must not be the identity element.
+    // what is this good for? does not use any pre-computations, just ordinary
+    // variable-base scalar multiplication.
     fn mul_bits_fixed_base<'a, CS: ConstraintSystem<ConstraintF>>(
         base: &'a G,
         mut cs: CS,
@@ -134,6 +153,7 @@ pub trait GroupGadget<G: Group, ConstraintF: Field>:
         base_g.mul_bits(cs, result, bits.into_iter())
     }
 
+    // why no default implementation for 3 bit lookup tables?
     fn precomputed_base_3_bit_signed_digit_scalar_mul<'a, CS, I, J, B>(
         _: CS,
         _: &[B],
@@ -148,10 +168,19 @@ pub trait GroupGadget<G: Group, ConstraintF: Field>:
         Err(SynthesisError::AssignmentMissing)
     }
 
+    /* Multi-scalar multi-base exponentiation
+        result = sum_j scalar_j * B_j
+    using precomputed 2^{2^i}-th of the base(s).
+    Why here? This type of exponentiation is specific to the Pedersen CRH/Commitment scheme.
+    Although it can be used for single-base multi-scalar exponentiation, it does not provide
+    the natural interface for it.
+
+    WARNING: in many applications 'a::to_bits need to be secure unpacking.
+    */
     fn precomputed_base_multiscalar_mul<'a, CS, T, I, B>(
         mut cs: CS,
-        bases: &[B],
-        scalars: I,
+        bases: &[B], // a vector of a vector of the base multiples of the bases
+        scalars: I, // typically a Vec of Vec of bits
     ) -> Result<Self, SynthesisError>
     where
         CS: ConstraintSystem<ConstraintF>,
@@ -165,7 +194,7 @@ pub trait GroupGadget<G: Group, ConstraintF: Field>:
             let base_powers = base_powers.borrow();
             let bits = bits.to_bits(&mut cs.ns(|| format!("Convert Scalar {} to bits", i)))?;
             result.precomputed_base_scalar_mul(
-                cs.ns(|| format!("Chunk {}", i)),
+                cs.ns(|| format!("Window {}", i)),
                 bits.iter().zip(base_powers),
             )?;
         }

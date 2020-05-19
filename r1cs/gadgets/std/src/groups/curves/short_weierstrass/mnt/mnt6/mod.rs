@@ -1,3 +1,9 @@
+/*
+MNT6 group gadgets G1Gadget and G2Gadget as well as G1PreparedGadget and G2PreparedGadget for
+the Miller loop, including their serialization (toBytesGadget)
+    Maybe better to move all the preperatory gadgets to pairing-related code
+*/
+
 use algebra::Field;
 
 use crate::{fields::{
@@ -81,6 +87,8 @@ impl<P: MNT6Parameters> ToBytesGadget<P::Fp> for G1PreparedGadget<P> {
 Clone(bound = "Fp3Gadget<P::Fp3Params, P::Fp>: Clone"),
 Debug(bound = "Fp3Gadget<P::Fp3Params, P::Fp>: Debug")
 )]
+
+
 pub struct G2CoefficientsGadget<P: MNT6Parameters> {
     pub(crate) r_y:            Fp3G<P>,
     pub(crate) gamma:          Fp3G<P>,
@@ -115,6 +123,14 @@ pub struct G2PreparedGadget<P: MNT6Parameters>{
 }
 
 impl<P: MNT6Parameters>G2PreparedGadget<P> {
+
+    /* Takes as input a (non-zero) G2Gadget Q, and outputs the
+     (P-independent) pre-computable coefficients for all operations of the Miller loop.
+     These are exactly the same as in the pairing primitive
+         s.y = the y-coordinate of internal state S,
+         gamma = the F3-slope of the tangent/P-chord at S,
+         gamma_x = the F3-slope times the x-coordinate s.x of S.
+    */
     pub fn from_affine<CS: ConstraintSystem<P::Fp>>(
         mut cs: CS,
         value: &G2Gadget<P>,
@@ -143,30 +159,45 @@ impl<P: MNT6Parameters>G2PreparedGadget<P> {
         Ok(g2p)
     }
 
+    /* computes the preparation coefficients at S and its subsequent doubling
+    */
     fn doubling_step_for_flipped_miller_loop<CS: ConstraintSystem<P::Fp>>(
         mut cs: CS,
         s: &G2Gadget<P>,
     ) -> Result<(G2Gadget<P>, G2CoefficientsGadget<P>), SynthesisError>
     {
-        //Compute gamma
-        let three_sx_squared_plus_a = Fp3G::<P>::alloc(cs.ns(|| "3s_x^2 + a"), || {
+        /*
+          CAUTION
+          only the value generation of three_sx_squared_plus_a is implemented,  IS NOT
+          ENFORCED by any constraints to equal 3*s.x^2 + a.
+          See the code for mnt4 how it is done correctly
+        */
+
+        //Allocate gamma, the F3-slope of the tangent at S
+        let three_sx_squared_plus_a = Fp3G::<P>::alloc(cs.ns(|| "allocate 3s_x^2 + a"), || {
             let sx_squared = s.x.get_value().get()?.square();
             let three_sx_squared_plus_a_val = sx_squared.double().add(&sx_squared).add(&P::TWIST_COEFF_A);
             Ok(three_sx_squared_plus_a_val)
         })?;
 
-        let two_sy = s.y.double(cs.ns(|| "2s_y"))?;
+        // allocate and enforce 2s_y = 2*s.y
+        let two_sy = s.y.double(cs.ns(|| "allocate 2s_y"))?;
 
-        let gamma = Fp3G::<P>::alloc(cs.ns(|| "gamma"), || {
+        let gamma = Fp3G::<P>::alloc(cs.ns(|| "allocate gamma"), || {
             Ok(three_sx_squared_plus_a.get_value().get()?.mul(&two_sy.get_value().get()?.inverse().get()?))
         })?;
 
-        //Check gamma (gamma*2s_y = 3sx^2 + a)
+        // enforce gamma to be the F3 slope at S
+        // gamma*2s_y = three_sx_squared_plus_a
         gamma.mul_equals(cs.ns(|| "Check gamma"), &two_sy, &three_sx_squared_plus_a)?;
 
         //Compute and check gamma_x
         let gamma_x = gamma.mul(cs.ns(|| "Compute gamma_x"), &s.x)?;
 
+
+        /* as we already computed the slope of the tangent, we re-implement the Weierstrass
+        doubling formulas to save constraints.
+        */
         //Compute new_sx
         let two_sx = s.x.double(cs.ns(|| "2s_x"))?;
         let new_sx = gamma.square(cs.ns(|| "gamma^2"))?
@@ -184,6 +215,9 @@ impl<P: MNT6Parameters>G2PreparedGadget<P> {
         Ok((s2, c))
     }
 
+    /* computes the preparation coefficients at S and its subsequent state by adding/subtracting
+    Q=(x,y) depending on the naf "bit"
+    */
     fn mixed_addition_step_for_flipped_miller_loop<CS: ConstraintSystem<P::Fp>>(
         mut cs: CS,
         x: &Fp3G<P>,
@@ -192,7 +226,7 @@ impl<P: MNT6Parameters>G2PreparedGadget<P> {
         naf_i: i32,
     ) -> Result<(G2Gadget<P>, G2CoefficientsGadget<P>), SynthesisError>
     {
-        //Compute gamma
+        //Compute gamma, i.e. the F3-slope of the chord between Q and S
         let sx_minus_x = s.x
             .sub(cs.ns(|| "s_x - x"), &x)?;
 
@@ -211,6 +245,8 @@ impl<P: MNT6Parameters>G2PreparedGadget<P> {
         //Compute and check gamma_x
         let gamma_x = gamma.mul(cs.ns(|| "Compute gamma_x"), &x)?;
 
+        /* as we already computed the slope gamma, we re-implement Weierstrass addition to save constraints
+        */
         //Compute and check new_sx
         let new_sx = gamma.square(cs.ns(|| "gamma^2"))?
             .sub(cs.ns(|| "gamma^2 - s_x"), &s.x)?

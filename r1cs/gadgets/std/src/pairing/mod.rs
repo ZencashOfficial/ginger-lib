@@ -1,3 +1,7 @@
+/*
+The PairingGadget trait as used by the MNT4/6- and BLS12 gadgets
+*/
+
 use crate::prelude::*;
 use algebra::{Field, PairingEngine};
 use r1cs_core::{ConstraintSystem, SynthesisError};
@@ -23,17 +27,21 @@ pub trait PairingGadget<PairingE: PairingEngine, ConstraintF: Field> {
 
     type GTGadget: FieldGadget<PairingE::Fqk, ConstraintF> + Clone;
 
+    // given a slice of (P,Q)-Gadgets (more precisely the precomputed G1- and G2PreparedGadgets)
+    // computes the product of its Miller loop outputs
     fn miller_loop<CS: ConstraintSystem<ConstraintF>>(
         cs: CS,
         p: &[Self::G1PreparedGadget],
         q: &[Self::G2PreparedGadget],
     ) -> Result<Self::GTGadget, SynthesisError>;
 
+    // computes the final exponentation
     fn final_exponentiation<CS: ConstraintSystem<ConstraintF>>(
         cs: CS,
         p: &Self::GTGadget,
     ) -> Result<Self::GTGadget, SynthesisError>;
 
+    // a single pairing evaluation
     fn pairing<CS: ConstraintSystem<ConstraintF>>(
         mut cs: CS,
         p: Self::G1PreparedGadget,
