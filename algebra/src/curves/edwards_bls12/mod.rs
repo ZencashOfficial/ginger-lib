@@ -1,3 +1,7 @@
+/*
+Zexe's inner curve of the BLS12-381, a twisted Edwards curve with 253 bit base field,
+251 bit order, and cofactor 4.
+*/
 use crate::field_new;
 use crate::{
     biginteger::BigInteger256,

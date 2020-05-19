@@ -1,3 +1,9 @@
+/*
+Coda's MNT6-753 curve of its MNT4/6 cycle, from https://codaprotocol.github.io/snark-challenge/MNT6753.html.
+Satisfy a security level of 128 Bit; however, its partner curve MNT4-753 doesn't.
+*/
+
+
 use crate::field_new;
 use crate::{
     curves::{PairingCurve, PairingEngine},

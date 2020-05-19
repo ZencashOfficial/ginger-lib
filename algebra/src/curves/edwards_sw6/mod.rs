@@ -1,3 +1,7 @@
+/*
+Yet another inner curve to the Cox-Pinch curve sw6, this time a non-pairing friendly twisted
+Edwards curve with 337 bit base field.
+*/
 use crate::field_new;
 use crate::{
     biginteger::BigInteger384 as BigInteger,

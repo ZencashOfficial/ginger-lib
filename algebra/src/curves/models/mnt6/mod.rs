@@ -23,8 +23,8 @@ use std::ops::{Add, Mul, Sub, MulAssign};
 // over F3, with twist = X = Y^2, the Frobenius operator is applied to reduce the cost of the 
 // final exponentiation, and we do pre-computations of (essentially) the line coefficients 
 // of the Miller loop.
-// The loop count allows signed bit representation, so this variant supports curves with Frobenius
-// trace having low Hamming weight NAF..
+// The loop count allows signed bit representation (flipped Miller loop), so it supports
+// low NAF-weight Frobenius trace.
 
 pub trait MNT6Parameters: 'static {
     // the loop count for the Miller loop, equals the |Frobenius trace of E - 1|

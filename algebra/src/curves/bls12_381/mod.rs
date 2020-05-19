@@ -20,6 +20,7 @@ pub type Bls12_381 = Bls12<Bls12_381Parameters>;
 pub struct Bls12_381Parameters;
 
 impl Bls12Parameters for Bls12_381Parameters {
+    //BLS parameter x = t - 1 = -15132376222941642752
     const X: &'static [u64] = &[0xd201000000010000];
     const X_IS_NEGATIVE: bool = true;
     const TWIST_TYPE: TwistType = TwistType::M;

@@ -1,3 +1,11 @@
+/*
+z-Cash's outer curve for the JubJub255, from https://electriccoin.co/blog/new-snark-curve/.
+A 256 bit BLS curve with embedding degree 12 and base field size of 381 bit.
+In 2016, https://eprint.iacr.org/2016/1102.pdf estimates it's security by 128 Bit, but a more
+recent 2019 paper https://eprint.iacr.org/2019/1371 establishes a base field size of 446 Bit to
+accomodate that security level
+*/
+
 use crate::field_new;
 use crate::{
     biginteger::{BigInteger256, BigInteger384},

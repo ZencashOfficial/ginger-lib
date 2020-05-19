@@ -1,3 +1,10 @@
+/*
+ZEXE's BLS12-377, the outer curve of edwards_bls12 and inner curve of the sw6.
+Base field size is 377 bits, embedding degree is 12.
+As for zCash's BLS12-381, its security is below 128 bit, see https://eprint.iacr.org/2019/1371
+which establishes a base field size of 446 Bit to accomodate that security level.
+*/
+
 use crate::{
     curves::{
         bls12::{
@@ -20,6 +27,7 @@ use self::{g1::Bls12_377G1Parameters, g2::Bls12_377G2Parameters};
 pub struct Bls12_377Parameters;
 
 impl Bls12Parameters for Bls12_377Parameters {
+    // BLS parameter x=9586122913090633729
     const X: &'static [u64] = &[0x8508c00000000001];
     /// `x` is positive.
     const X_IS_NEGATIVE: bool = false;

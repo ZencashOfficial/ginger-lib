@@ -1,3 +1,7 @@
+/*
+Ate pairing for ZEXE's sw6 a Cocks-Pinch curve as outer curve for the BLS12-377.
+*/
+
 use crate::field_new;
 use crate::{
     biginteger::BigInteger832,

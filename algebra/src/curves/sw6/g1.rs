@@ -1,3 +1,10 @@
+/* ZEXE's outer curve for the BLS12-377, a Cox-Pinch curve with with base field size 782 bits,
+embedding degree 6, and complex multiplication discriminant D=339.
+Both curves accomplish a security level of 128 Bit.
+However there is a slightly optimized Brezing-Weng outer curve of same embedding degree and
+with base field size 761 bits, called BW6-761 in https://eprint.iacr.org/2020/351.pdf.
+*/
+
 use crate::field_new;
 use super::{G2Affine, SW6};
 use crate::{
