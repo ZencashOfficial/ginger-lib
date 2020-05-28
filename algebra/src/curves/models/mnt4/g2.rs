@@ -1,3 +1,5 @@
+//! Model and method interfaces for the Ate pairing pre-computations in G2.
+
 use crate::curves::models::mnt4::{MNT4Parameters, MNT4p};
 use crate::curves::short_weierstrass_projective::{GroupAffine, GroupProjective};
 use crate::{Fp2, ToBytes, AffineCurve, FromBytes};
@@ -8,7 +10,7 @@ use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 pub type G2Affine<P> = GroupAffine<<P as MNT4Parameters>::G2Parameters>;
 pub type G2Projective<P> = GroupProjective<<P as MNT4Parameters>::G2Parameters>;
 
-
+/// The pre-computed coefficients of a single Miller line.
 #[derive(Derivative)]
 #[derivative(
 Clone(bound = "P: MNT4Parameters"),
@@ -17,8 +19,11 @@ PartialEq(bound = "P: MNT4Parameters"),
 Eq(bound = "P: MNT4Parameters")
 )]
 pub struct G2PreparedCoefficients<P: MNT4Parameters>{
+    /// The y-coordinate at an intermediate point R of the Miller loop
     pub r_y:         Fp2<P::Fp2Params>,
+    /// The F2-slope of the tangent/chord at R
     pub gamma:       Fp2<P::Fp2Params>,
+    /// The F2-slope times the x-coordinate of R, used to compute the second line coefficient
     pub gamma_x:     Fp2<P::Fp2Params>,
 }
 
@@ -43,6 +48,10 @@ impl<P: MNT4Parameters> FromBytes for G2PreparedCoefficients<P> {
     }
 }
 
+/// The G2 pre-computed data for the entire Miller loop.
+///
+/// Comprised of the pairing argument Q from G2, and the vector of all
+/// Miller line coefficients.
 #[derive(Derivative)]
 #[derivative(
 Clone(bound = "P: MNT4Parameters"),
@@ -51,7 +60,9 @@ PartialEq(bound = "P: MNT4Parameters"),
 Eq(bound = "P: MNT4Parameters")
 )]
 pub struct G2Prepared<P: MNT4Parameters>{
+    /// The pairing argument Q from G2
     pub q:      G2Affine<P>,
+    /// the coefficients of all Miller lines
     pub coeffs: Vec<G2PreparedCoefficients<P>>,
 }
 

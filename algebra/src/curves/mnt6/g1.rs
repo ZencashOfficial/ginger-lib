@@ -1,8 +1,4 @@
-/*
-Paring-friendly MNT curve of embedding degree 6, from Ben-Sasson, Chiesa, et al
-Scalable ZK via Cycles of ECs, https://eprint.iacr.org/2014/595.pdf.
-Accomodates a security level of 80 bits.
-*/
+//! G1 parameters for the MNT6-298.
 
 use crate::{field_new, FromBytes};
 use crate::{

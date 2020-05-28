@@ -1,3 +1,5 @@
+//! Model and method interfaces for the Ate pairing pre-computations in G2.
+
 use crate::curves::models::mnt6::{MNT6Parameters, MNT6p};
 use crate::curves::short_weierstrass_projective::{GroupAffine, GroupProjective};
 use crate::{Fp3, ToBytes, AffineCurve, FromBytes};
@@ -9,6 +11,7 @@ pub type G2Affine<P> = GroupAffine<<P as MNT6Parameters>::G2Parameters>;
 pub type G2Projective<P> = GroupProjective<<P as MNT6Parameters>::G2Parameters>;
 
 
+/// The pre-computed coefficients of a single Miller line.
 #[derive(Derivative)]
 #[derivative(
 Copy(bound = "P: MNT6Parameters"),
@@ -18,8 +21,11 @@ PartialEq(bound = "P: MNT6Parameters"),
 Eq(bound = "P: MNT6Parameters")
 )]
 pub struct G2PreparedCoefficients<P: MNT6Parameters>{
+    /// The y-coordinate at an intermediate point R of the Miller loop
     pub r_y:        Fp3<P::Fp3Params>,
+    /// The F3-slope of the tangent/chord at R
     pub gamma:      Fp3<P::Fp3Params>,
+    /// The F3-slope times the x-coordinate of R, used to compute the second line coefficient
     pub gamma_x:    Fp3<P::Fp3Params>,
 }
 
@@ -44,6 +50,10 @@ impl<P: MNT6Parameters> FromBytes for G2PreparedCoefficients<P> {
     }
 }
 
+/// The G2 pre-computed data for the entire Miller loop.
+///
+/// Comprised of the pairing argument Q from G2, and the vector of all
+/// Miller line coefficients.
 #[derive(Derivative)]
 #[derivative(
 Clone(bound = "P: MNT6Parameters"),
@@ -52,7 +62,9 @@ PartialEq(bound = "P: MNT6Parameters"),
 Eq(bound = "P: MNT6Parameters")
 )]
 pub struct G2Prepared<P: MNT6Parameters>{
+    /// The pairing argument Q from G2
     pub q:      G2Affine<P>,
+    /// the coefficients of all Miller lines
     pub coeffs: Vec<G2PreparedCoefficients<P>>,
 }
 

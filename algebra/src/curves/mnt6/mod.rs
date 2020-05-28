@@ -1,8 +1,10 @@
-/*
-Paring-friendly MNT curve of embedding degree 6, from Ben-Sasson, Chiesa, et al.,
-Scalable ZK via Cycles of ECs, https://eprint.iacr.org/2014/595.pdf.
-Accomodates a security level of 80 bits.
-*/
+//! [BCTV's MNT6-298](https://eprint.iacr.org/2014/595.pdf) curve of their MNT4/6 cycle for fully
+//! recursive SNARKs.
+//! It has embedding degree 6, a base field as well as prime order subgroup size of 298 bits.
+//!
+//! According to a security estimate similar to [Guillevic 2019](https://eprint.iacr.org/2019/1371),
+//! its security above 80 bit.
+
 use crate::field_new;
 use crate::{
     biginteger::BigInteger320,

@@ -1,3 +1,5 @@
+//! Model and method interfaces for the Ate pairing pre-computations in G1.
+
 use crate::{bytes::ToBytes, curves::{
     bls12::Bls12Parameters,
     short_weierstrass_jacobian::{GroupAffine, GroupProjective},
@@ -9,6 +11,7 @@ use std::io;
 pub type G1Affine<P> = GroupAffine<<P as Bls12Parameters>::G1Parameters>;
 pub type G1Projective<P> = GroupProjective<<P as Bls12Parameters>::G1Parameters>;
 
+
 #[derive(Derivative)]
 #[derivative(
     Clone(bound = "P: Bls12Parameters"),
@@ -16,6 +19,7 @@ pub type G1Projective<P> = GroupProjective<<P as Bls12Parameters>::G1Parameters>
     PartialEq(bound = "P: Bls12Parameters"),
     Eq(bound = "P: Bls12Parameters")
 )]
+/// Carries pre-computed data used to evaluate the Miller lines.
 pub struct G1Prepared<P: Bls12Parameters>(pub G1Affine<P>);
 
 impl<P: Bls12Parameters> G1Prepared<P> {

@@ -1,6 +1,14 @@
-/*
-Ate pairing for ZEXE's sw6 a Cocks-Pinch curve as outer curve for the BLS12-377.
-*/
+//! [Zexe's sw6](https://eprint.iacr.org/2018/962.pdf), an embedding degree 6 Cocks-Pinch curve
+//! as outer curve for the BLS12-377.
+//! Its base field size is 782 bits.
+//!
+//! According to a security estimate similar to [Guillevic 2019](https://eprint.iacr.org/2019/1371),
+//! its security is estimated above 128 bit.
+//! However there is a slightly optimized Brezing-Weng outer curve of same embedding degree and
+//! with base field size 761 bits, called BW6-761 in [HG 2020](https://eprint.iacr.org/2020/351.pdf).
+//!
+//! Parameters and implementation of the Ate pairing are similar to that of MNT6.
+//! For their explanation see the MNT6Parameters trait.
 
 use crate::field_new;
 use crate::{
@@ -27,6 +35,7 @@ mod tests;
 pub type GT = Fq6;
 
 #[derive(Copy, Clone, Debug)]
+/// The pairing struct for sw6
 pub struct SW6;
 
 impl PairingEngine for SW6 {
@@ -178,14 +187,15 @@ pub const FQ_ZERO: Fq = field_new!(Fq, BigInteger832([0, 0, 0, 0, 0, 0, 0, 0, 0,
 /// FQ_ONE = 1
 pub const FQ_ONE: Fq = field_new!(Fq, FqParameters::R);
 
-/// TWIST = (0, 1, 0)
+/// TWIST = (0, 1, 0), the twist element for the quadratic twist.
 pub const TWIST: Fq3 = field_new!(Fq3, FQ_ZERO, FQ_ONE, FQ_ZERO);
 
 /// ATE_IS_LOOP_COUNT_NEG = false
 pub const ATE_IS_LOOP_COUNT_NEG: bool = false;
 
-/// ATE_LOOP_COUNT =
-/// 506464946133393486072777102926336625944849939610982267859828541006717966526573193706126370441346337661774335955699621
+/// ATE_LOOP_COUNT = Abs(t - 1) =
+/// 5064649461333934860727771029263366259448499396109822678598285410067179\
+/// 66526573193706126370441346337661774335955699621
 pub const ATE_LOOP_COUNT: [u64; 13] = [
     0x55c5b9b57b942ae8,
     0x3d52287d3dfd424a,
@@ -206,7 +216,10 @@ pub const ATE_LOOP_COUNT: [u64; 13] = [
 pub const FINAL_EXPONENT_LAST_CHUNK_W0_IS_NEG: bool = true;
 
 /// FINAL_EXPONENT_LAST_CHUNK_ABS_OF_W0 =
-/// 7000705447348627246181409558336018323010329260726930841638672011287206690002601216854775649561085256265269640040570922609783227469279331691880282815325569032149343779036142830666859805506518426649197067288711084398033
+/// 7000705447348627246181409558336018323010329260726930841638672011287206\
+/// 6900026012168547756495610852562652696400405709226097832274692793316918\
+/// 8028281532556903214934377903614283066685980550651842664919706728871108\
+/// 4398033
 pub const FINAL_EXPONENT_LAST_CHUNK_ABS_OF_W0: BigInteger832 = BigInteger832([
     0xb62ef36af72855d1,
     0x676b5cef49d290fa,
@@ -224,7 +237,8 @@ pub const FINAL_EXPONENT_LAST_CHUNK_ABS_OF_W0: BigInteger832 = BigInteger832([
 ]);
 
 /// FINAL_EXPONENT_LAST_CHUNK_W1 =
-/// 86482221941698704497288378992285180119495364068003923046442785886272123124361700722982503222189455144364945735564951562986
+/// 8648222194169870449728837899228518011949536406800392304644278588627212\
+/// 3124361700722982503222189455144364945735564951562986
 pub const FINAL_EXPONENT_LAST_CHUNK_W1: BigInteger832 = BigInteger832([
     0x5657b9b57b942aea,
     0x84f9a65f3bd54eaf,

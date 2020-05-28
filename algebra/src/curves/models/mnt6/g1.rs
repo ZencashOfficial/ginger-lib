@@ -1,3 +1,5 @@
+//! Model and method interfaces for the Ate pairing pre-computations in G1.
+
 use crate::curves::models::mnt6::{MNT6Parameters, MNT6p};
 use crate::curves::short_weierstrass_projective::{GroupAffine, GroupProjective};
 use crate::{Fp3, ToBytes, AffineCurve, FromBytes};
@@ -7,6 +9,7 @@ use std::io;
 pub type G1Affine<P> = GroupAffine<<P as MNT6Parameters>::G1Parameters>;
 pub type G1Projective<P> = GroupProjective<<P as MNT6Parameters>::G1Parameters>;
 
+/// Carries pre-computed data used to evaluate the Miller lines.
 #[derive(Derivative)]
 #[derivative(
 Copy(bound = "P: MNT6Parameters"),
