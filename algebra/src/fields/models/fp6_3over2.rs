@@ -1,3 +1,6 @@
+//! Degree 6 extension field of prime fields Fp with p = 1 mod 3 as cubic extension of
+//! Fp2.
+
 use rand::{Rng, distributions::{Standard, Distribution}};
 use crate::{UniformRand, ToBits, FromBits, PrimeField, Error};
 use std::{
@@ -12,22 +15,45 @@ use crate::{
     fields::{Field, Fp2, Fp2Parameters, FpParameters},
 };
 
+
+/// Model for sextic extension field of Fp as quadratic extension
+///
+///     F6 = F2[Y]/(X^3-alpha),
+///
+/// of F2 = Fp2 using a "non-residue" alpha which is a non-cube in F2.
+/// (see [KM 2005](https://link.springer.com/chapter/10.1007/11586821_2)
+/// or [BS 2009](https://eprint.iacr.org/2009/556.pdf)).
+/// This extension is not used as embedding field but as intermediate field for
+/// higher degree extensions.
+
 pub trait Fp6Parameters: 'static + Send + Sync + Copy {
     type Fp2Params: Fp2Parameters;
 
+    /// The non-residue alpha for extending Fp2
     const NONRESIDUE: Fp2<Self::Fp2Params>;
 
-    /// Coefficients for the Frobenius automorphism.
+    /// Coefficients of the powers of the Frobenius map applied to Y:
+    ///
+    /// pi^k(X) = X^(p^k-1) * X = beta^((p^k-1)/3) * X
+    ///     = C1k * X,
+    ///
+    /// k = 0,1,..,5.
     const FROBENIUS_COEFF_FP6_C1: [Fp2<Self::Fp2Params>; 6];
     const FROBENIUS_COEFF_FP6_C2: [Fp2<Self::Fp2Params>; 6];
 
+    /// Default implementation of multiplication of Fp2 elements by
+    /// `ǸONRESIDUE` as used by the implementation of Fp6 arithmetics.
     #[inline(always)]
     fn mul_fp2_by_nonresidue(fe: &Fp2<Self::Fp2Params>) -> Fp2<Self::Fp2Params> {
         Self::NONRESIDUE * fe
     }
 }
 
-/// An element of Fp6, represented by c0 + c1 * v + c2 * v^(2).
+/// An element of Fp6 represented as vector of Fp2 elements.
+///
+///   (c0,c1,c2) = c0 + c1 * X + c2 * X^2,
+///
+/// with Y as above.
 #[derive(Derivative)]
 #[derivative(
     Default(bound = "P: Fp6Parameters"),

@@ -1,3 +1,5 @@
+//! The base field of the quadratic twist, a cubic extension of Fq.
+
 use crate::field_new;
 use crate::{
     biginteger::BigInteger832 as BigInteger,
@@ -14,7 +16,8 @@ pub struct Fq3Parameters;
 impl Fp3Parameters for Fq3Parameters {
     type Fp = Fq;
 
-    /// NONRESIDUE = 13
+    /// NONRESIDUE = 13,
+    /// a non-cube and a non-square in Fq
     const NONRESIDUE: Fq = field_new!(Fq, BigInteger([
         0xe755952f4650755e,
         0x16c44ce1331ef791,

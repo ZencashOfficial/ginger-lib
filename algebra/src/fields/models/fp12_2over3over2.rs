@@ -1,3 +1,7 @@
+//! Degree 12 extension field of prime fields Fp with p = 1 mod 12 as
+//! towered extension of Fp2 using fp6_3over2 as intermediate field.
+//! Includes pairing embedding field operations.
+
 use rand::{Rng, distributions::{Standard, Distribution}};
 use crate::{UniformRand, ToBits, FromBits, PrimeField, Error};
 use std::{
@@ -13,14 +17,35 @@ use crate::{
     BitIterator,
 };
 
+/// Model for degree 12 embedding field of Fp as towered extension
+///
+///     F12 = F6[Y]/(Y^2-X),
+///     F6 = F2[X]/(X^3-alpha)
+///
+/// of F2 = Fp2 using a "non-residue" alpha which is neither a square nor a cube in F2
+/// (see [KM 2005](https://link.springer.com/chapter/10.1007/11586821_2)
+/// or [BS 2009](https://eprint.iacr.org/2009/556.pdf)).
+///
+/// As embedding field we supply cyclotomic operations as well as an optimized multiplication for
+/// a special operand setting as used by embedding degree 12 pairings.
+
 pub trait Fp12Parameters: 'static + Send + Sync + Copy {
     type Fp6Params: Fp6Parameters;
 
-    /// Coefficients for the Frobenius automorphism.
+    /// Coefficients of the powers of the Frobenius map applied to Y:
+    ///
+    /// pi^k(Y) = Y^(p^k-1) * Y = alpha^((p^k-1)/6) * Y
+    ///     = C1k * Y,
+    ///
+    /// k = 0,1,..,11.
     const FROBENIUS_COEFF_FP12_C1: [Fp2<Fp2Params<Self>>; 12];
 }
 
-/// An element of Fp12, represented by c0 + c1 * v
+/// An element of Fp12, represented as vector of Fp6 elements
+///
+/// (c0,c1) = c0 + c1 * Y,
+///
+/// with Y as above.
 #[derive(Derivative)]
 #[derivative(
     Default(bound = "P: Fp12Parameters"),

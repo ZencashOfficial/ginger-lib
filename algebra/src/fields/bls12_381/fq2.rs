@@ -1,3 +1,5 @@
+//! Quadratic extension of BLS12-381's base field, the base field of its sextic twist.
+
 use crate::field_new;
 use crate::{
     biginteger::BigInteger384 as BigInteger,
@@ -14,7 +16,8 @@ pub struct Fq2Parameters;
 impl Fp2Parameters for Fq2Parameters {
     type Fp = Fq;
 
-    /// NONRESIDUE = -1
+    /// NONRESIDUE = -1,
+    /// the non-square used for the quadratic extension.
     const NONRESIDUE: Fq = field_new!(Fq, BigInteger([
         0x43f5fffffffcaaae,
         0x32b7fff2ed47fffd,
@@ -24,7 +27,9 @@ impl Fp2Parameters for Fq2Parameters {
         0x40ab3263eff0206,
     ]));
 
-    /// QUADRATIC_NONRESIDUE = (U + 1)
+    /// QUADRATIC_NONRESIDUE = (U + 1) for implementation of sqrt algorithm.
+    /// Actually, this one is also a non-cube in Fq2 hence it is used for
+    /// constructing Fq12 as sextic extension of Fq2.
     const QUADRATIC_NONRESIDUE: (Fq, Fq) = (
         field_new!(Fq, BigInteger([
             0x760900000002fffd,
@@ -66,6 +71,7 @@ impl Fp2Parameters for Fq2Parameters {
         ])),
     ];
 
+    /// Multiplication by `NONRESDIDUE` made simple
     #[inline(always)]
     fn mul_fp_by_nonresidue(fp: &Self::Fp) -> Self::Fp {
         -(*fp)

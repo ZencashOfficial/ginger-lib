@@ -1,3 +1,8 @@
+//! Intermediate field Fq6 as cubic extension of the sextic twist field.
+//!
+//! Contrary to the definition of Fq6Parameters::NONRESIDUE this extension is
+//! achieved by adding a cubic root of X = sqrt(-5).
+
 use crate::field_new;
 use crate::biginteger::BigInteger384;
 
@@ -19,7 +24,9 @@ pub struct Fq6Parameters;
 impl Fp6Parameters for Fq6Parameters {
     type Fp2Params = Fq2Parameters;
 
-    /// NONRESIDUE = U
+    /// NONRESIDUE, a non-square and non-cube in Fq2.
+    /// Note that this one is NOT used for extending Fq2, see the overruled default
+    /// implementation for mul_fp2_by_nonresidue.
     const NONRESIDUE: Fq2 = field_new!(Fq2, 
         field_new!(Fq, BigInteger384([0, 0, 0, 0, 0, 0])),
         field_new!(Fq, BigInteger384([
@@ -32,6 +39,7 @@ impl Fp6Parameters for Fq6Parameters {
         ])),
     );
 
+    /// Coefficients of the Frobenius map as linear map over Fq2.
     const FROBENIUS_COEFF_FP6_C1: [Fq2; 6] = [
         // Fp2::NONRESIDUE^(((q^0) - 1) / 3)
         field_new!(Fq2, 
@@ -181,9 +189,10 @@ impl Fp6Parameters for Fq6Parameters {
         ),
     ];
 
+    /// Multiplication by the extension element X, the square root of -5.
     #[inline(always)]
     fn mul_fp2_by_nonresidue(fe: &Fq2) -> Fq2 {
-        // Karatsuba multiplication with constant other = u.
+        // Karatsuba multiplication with constant other = X with X^2=-5.
         let c0 = Fq2Parameters::mul_fp_by_nonresidue(&fe.c1);
         let c1 = fe.c0;
         field_new!(Fq2, c0, c1)

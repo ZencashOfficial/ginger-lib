@@ -1,3 +1,8 @@
+//! Intermediate field Fq6 as cubic extension of the sextic twist field.
+//!
+//! The extension is based by adding a third root of alpha, where alpha is
+//! a non-square and non-cube in Fq2.
+
 use crate::field_new;
 use crate::{
     biginteger::BigInteger384,
@@ -18,7 +23,8 @@ pub struct Fq6Parameters;
 impl Fp6Parameters for Fq6Parameters {
     type Fp2Params = Fq2Parameters;
 
-    /// NONRESIDUE = (U + 1)
+    /// NONRESIDUE = (U + 1),
+    /// a non-cube in Fq2 suitable for cubic extensions.
     const NONRESIDUE: Fq2 = field_new!(Fq2, 
         field_new!(Fq, BigInteger384([
             0x760900000002fffd,

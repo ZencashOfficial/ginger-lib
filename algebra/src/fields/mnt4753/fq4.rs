@@ -1,3 +1,10 @@
+//! Embedding field for the MNT4-753, a degree 4 extension of Fq.
+//!
+//! Constructed as degree 2 extension of the base field Fq2 of the quadratic
+//! twist.
+//! Contrary to the definition of `NONRESIDUE` below, this extension is achieved
+//! by adding a square root Y of X in Fq2, see the comments in the Fp4 model.
+
 use crate::field_new;
 use crate::{
     biginteger::BigInteger768 as BigInteger,
@@ -18,8 +25,7 @@ impl Fp4Parameters for Fq4Parameters {
     type Fp2Params = Fq2Parameters;
 
     /// NONRESIDUE = (8,1)
-    /// this should be alpha = 13
-    /// however, it does no harm as the arithmetics of fp4 does rely on it
+    /// however, it does no harm as the arithmetics of fp4 does not rely on it
     const NONRESIDUE: Fq2 = field_new!(Fq2,
         field_new!(Fq, BigInteger([
             587330122779359758,
@@ -54,7 +60,7 @@ impl Fp4Parameters for Fq4Parameters {
     /// Coefficients for the Frobenius automorphism.
     const FROBENIUS_COEFF_FP4_C1: [Fq; 4] = [
 
-        //NONRESIDUE^((q^0 - 1)/4)
+        // NONRESIDUE^((q^0 - 1)/4)
         field_new!(Fq, BigInteger([
             11000302312691101506,
             10506108233708684934,
@@ -70,7 +76,7 @@ impl Fp4Parameters for Fq4Parameters {
             135547536859714,
         ])),
 
-        //NONRESIDUE^((q^1 - 1)/4)
+        // NONRESIDUE^((q^1 - 1)/4)
         field_new!(Fq, BigInteger([
             2732208433323581659,
             2172983777736624684,
@@ -86,7 +92,7 @@ impl Fp4Parameters for Fq4Parameters {
             163570781165682,
         ])),
 
-        //NONRESIDUE^((q^2 - 1)/4)
+        // NONRESIDUE^((q^2 - 1)/4)
         field_new!(Fq, BigInteger([
             14260497802974073023,
             5895249896161266456,
@@ -102,7 +108,7 @@ impl Fp4Parameters for Fq4Parameters {
             362282887012814,
         ])),
 
-        //NONRESIDUE^((q^3 - 1)/4)
+        // NONRESIDUE^((q^3 - 1)/4)
         field_new!(Fq, BigInteger([
             4081847608632041254,
             14228374352133326707,

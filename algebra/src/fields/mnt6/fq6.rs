@@ -1,3 +1,10 @@
+//! Embedding field for the MNT6-298, a degree 6 extension of Fq.
+//!
+//! Constructed as degree 2 extension of the base field Fq3 of the quadratic
+//! twist.
+//! Contrary to the definition of `NONRESIDUE` below, this extension is achieved
+//! by adding a square root Y of X in Fq3, see the comments in the Fp6_2over3 model.
+
 use crate::field_new;
 use crate::{
     biginteger::BigInteger320 as BigInteger,
@@ -17,6 +24,7 @@ pub struct Fq6Parameters;
 impl Fp6Parameters for Fq6Parameters {
     type Fp3Params = Fq3Parameters;
 
+    /// not used
     const NONRESIDUE: Fq3 = field_new!(Fq3, 
         field_new!(Fq, BigInteger([
             6408337942890780106,

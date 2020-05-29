@@ -1,3 +1,5 @@
+//! Cubic extension of prime fields Fp with p = 1 mod 3.
+
 use rand::{Rng, distributions::{Standard, Distribution}};
 use crate::{UniformRand, ToBits, FromBits, Error};
 use std::{
@@ -13,40 +15,59 @@ use crate::{
     fields::{Field, LegendreSymbol, PrimeField, SquareRootField, FpParameters},
 };
 
-/// Model for cubic extension field of a prime field F=Fp
-///     F3 = F[X]/(X^3-alpha),
-/// with alpha being a (quadratic) "non-residue" (for which X^3-alpha is irreducible).
+/// Model for cubic extension of a prime field Fp with p = 1 mod 3.
+///
+/// Consider the cubic extension of F = Fp as
+///
+/// F3 = F[X]/(X^3-alpha),
+///
+/// where alpha is a "non-residue", so that X^3 - alpha is irreducible over F.
+/// This is satisfied whenever alpha is a non-cube in F, i.e.
+///
+/// alpha^{(p-1)/3} != 1 mod p.
 ///
 /// We implement inversion according to
-/// Beuchat, et al., High-Speed Software Implementation of the Optimal Ate Pairing over Barreto–Naehrig Curves
-/// https://eprint.iacr.org/2010/354.pdf,
+/// [Beuchat, et al. 2010](https://eprint.iacr.org/2010/354.pdf),
 /// and square and Karatsuba multiplication according to
-/// Devegili, et al., Multiplication and Squaring on Abstract Pairing-Friendly Fields
-/// https://eprint.iacr.org/2006/471.pdf
+/// [Devegili, et al. 2006](https://eprint.iacr.org/2006/471.pdf).
 
 pub trait Fp3Parameters: 'static + Send + Sync {
     type Fp: PrimeField + SquareRootField;
 
-    //alpha
+    /// The extension field element alpha as above.
     const NONRESIDUE: Self::Fp;
-    // coefficients of the powers of the Frobenius automorphism as linear map over F
-    // (pi^0(X), pi^1(X), pi^2(X)) = (C1_0*X, C1_1*X +C1_2*X),
+    /// Coefficients of the powers of the Frobenius map applied to X:
+    ///
+    /// pi^k(X) = X^(p^k-1) * X = alpha^((p^k-1)/3) * X
+    ///     = C1k * X,
+    ///
+    /// k = 0,1,2.
     const FROBENIUS_COEFF_FP3_C1: [Self::Fp; 3];
-    // (pi^0(X^2), pi^1(X^2), pi^2(X^2)) = (C2_0*X^2, C2_1*X^2 +C2_2*X^2),
+    /// Coefficients C2k of the k-th powers of the Frobenius map applied to X^2:
+    ///
+    /// pi^k(X^2) = (X^2)^{p^k} = X^(2(p^k-1)) * X^2 = alpha^(2(p^k - 1)/ 3)*X^2
+    ///        = C2k * X^2,
+    ///
+    /// k = 0,1,2.
     const FROBENIUS_COEFF_FP3_C2: [Self::Fp; 3];
     /// p^3 - 1 = 2^s * t, where t is odd.
     const TWO_ADICITY: u32;
     const T_MINUS_ONE_DIV_TWO: &'static [u64];
-    /// t-th power of a quadratic nonresidue in Fp3.
-    /// this is needed for the square root algorithm
+    /// t-th power of a quadratic nonresidue in Fp3
+    /// as needed for the square root algorithm
     const QUADRATIC_NONRESIDUE_TO_T: (Self::Fp, Self::Fp, Self::Fp);
-
+    /// The multiplication function for Fp elements by alpha, used in the
+    /// implementation of the Fp3 arithmetics.
     #[inline(always)]
     fn mul_fp_by_nonresidue(fe: &Self::Fp) -> Self::Fp {
         Self::NONRESIDUE * fe
     }
 }
 
+/// Fp3 elements are regarded as vector of Fp elements.
+///
+/// (c0,c1,c2) = c0 + c1 * X + c2 * X^2
+///
 #[derive(Derivative)]
 #[derivative(
     Default(bound = "P: Fp3Parameters"),

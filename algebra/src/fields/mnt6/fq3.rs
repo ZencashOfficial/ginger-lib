@@ -1,3 +1,5 @@
+//! The base field of the quadratic twist, a cubic extension of Fq.
+
 use crate::field_new;
 use crate::{
     biginteger::BigInteger320 as BigInteger,
@@ -14,7 +16,8 @@ pub struct Fq3Parameters;
 impl Fp3Parameters for Fq3Parameters {
     type Fp = Fq;
 
-    //alpha = 11
+    /// alpha = 5,
+    /// a non-square and non-cube in Fq
     const NONRESIDUE: Fq = field_new!(Fq, BigInteger([
         0x58eefd67fea995ca,
         0x12f14affbb33a004,
@@ -42,6 +45,9 @@ impl Fp3Parameters for Fq3Parameters {
         0x6878f58,
     ];
 
+    /// non-square in Fq3 =
+    /// 4759222861692613257533492496530484515451248785528235155532677357391646\
+    /// 47307408490559963137.
     const QUADRATIC_NONRESIDUE_TO_T: (Fq, Fq, Fq) = (
         field_new!(Fq, BigInteger([
             0x44a4178610a3a4e6,
@@ -54,6 +60,8 @@ impl Fp3Parameters for Fq3Parameters {
         field_new!(Fq, BigInteger([0, 0, 0, 0, 0])),
     );
 
+    /// Coefficients of the powers of the Frobenius map over Fq
+    /// applied to X
     const FROBENIUS_COEFF_FP3_C1: [Fq; 3] = [
         field_new!(Fq, BigInteger([
             0xc3177aefffbb845c,
@@ -78,6 +86,8 @@ impl Fp3Parameters for Fq3Parameters {
         ])),
     ];
 
+    /// Coefficients of the powers of the Frobenius map over Fq
+    /// applied to X^2
     const FROBENIUS_COEFF_FP3_C2: [Fq; 3] = [
         field_new!(Fq, BigInteger([
             0xc3177aefffbb845c,

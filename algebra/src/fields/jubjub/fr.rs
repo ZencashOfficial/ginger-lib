@@ -1,3 +1,5 @@
+//! Exponent field of the JubJub, a 252 bit prime field with duadicity = 1.
+
 use crate::{
     biginteger::BigInteger256 as BigInteger,
     fields::{Fp256, Fp256Parameters, FpParameters},
@@ -11,7 +13,9 @@ impl Fp256Parameters for FrParameters {}
 impl FpParameters for FrParameters {
     type BigInt = BigInteger;
 
-    // MODULUS = 6554484396890773809930967563523245729705921265872317281365359162392183254199.
+    /// MODULUS =
+    /// 6554484396890773809930967563523245729705921265872317281365359162392183\
+    /// 254199
     const MODULUS: BigInteger = BigInteger([
         0xd0970e5ed6f72cb7,
         0xa6682093ccc81082,
@@ -25,6 +29,9 @@ impl FpParameters for FrParameters {
 
     const REPR_SHAVE_BITS: u32 = 4;
 
+    /// Montgomery constant =
+    /// 4365854490173040654744536428792730448269323145811170256246478247246014\
+    /// 318553
     const R: BigInteger = BigInteger([
         0x25f80bb3b99607d9,
         0xf315d62f66b6e750,
@@ -32,6 +39,9 @@ impl FpParameters for FrParameters {
         0x9a6fc6f479155c6,
     ]);
 
+    /// Montgomery  constant squared =
+    /// 2244478849891746936202736009816130624903096691796347063256129649283183\
+    /// 245105
     const R2: BigInteger = BigInteger([
         0x67719aa495e57731,
         0x51b0cef09ce3fc26,
@@ -41,6 +51,7 @@ impl FpParameters for FrParameters {
 
     const INV: u64 = 0x1ba3a358ef788ef9;
 
+    /// generator = 6
     const GENERATOR: BigInteger = BigInteger([
         0x720b1b19d49ea8f1,
         0xbf4aa36101f13a58,
@@ -50,6 +61,7 @@ impl FpParameters for FrParameters {
 
     const TWO_ADICITY: u32 = 1;
 
+    /// square root of unity = -1
     const ROOT_OF_UNITY: BigInteger = BigInteger([
         0xaa9f02ab1d6124de,
         0xb3524a6466112932,

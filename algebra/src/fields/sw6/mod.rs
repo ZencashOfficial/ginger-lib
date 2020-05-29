@@ -1,3 +1,8 @@
+//! Base field Fq, exponent field Fr and embedding field Fq6 for the sw6.
+//!
+//! The construction of the degree 6 extension of Fq (with q=1 mod 12) is based on a
+//! non-square and non-cube 11 by successively adding roots of X^6 - 11.
+
 pub mod fr;
 pub use self::fr::*;
 

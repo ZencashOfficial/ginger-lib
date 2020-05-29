@@ -1,3 +1,5 @@
+//! Montgomery arithemtics for BigInteger832.
+
 use crate::{
     biginteger::{arithmetic as fa, BigInteger as _BigInteger, BigInteger832 as BigInteger},
     bytes::{FromBytes, ToBytes},

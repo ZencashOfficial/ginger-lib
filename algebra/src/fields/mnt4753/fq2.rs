@@ -1,3 +1,5 @@
+//! The base field of the quadratic twist, a quadratic extension of Fq.
+
 use crate::field_new;
 use crate::{
     biginteger::BigInteger768 as BigInteger,
@@ -15,7 +17,7 @@ impl Fp2Parameters for Fq2Parameters {
     type Fp = Fq;
 
     /// NONRESIDUE = alpha = 13
-    /// Montg.rep.
+    /// is a non-square in Fq
     const NONRESIDUE: Fq = field_new!(Fq, BigInteger([
         11881297496860141143,
         13588356353764843511,
@@ -31,7 +33,7 @@ impl Fp2Parameters for Fq2Parameters {
         268626707558702,
     ]));
 
-    /// QUADRATIC_NONRESIDUE = (8,1)
+    /// QUADRATIC_NONRESIDUE  in Fq2 = (8,1)
     /// Montg. rep.
     const QUADRATIC_NONRESIDUE: (Fq, Fq) = (
         field_new!(Fq, BigInteger([
@@ -68,7 +70,7 @@ impl Fp2Parameters for Fq2Parameters {
     /// Coefficients for the Frobenius automorphism.
     const FROBENIUS_COEFF_FP2_C1: [Fq; 2] = [
 
-        //X^{q^0} = alpha^((q^0 - 1)/2)*X = 1*X
+        // X^{q^0} = alpha^((q^0 - 1)/2)*X = 1*X
         field_new!(Fq, BigInteger([
             11000302312691101506,
             10506108233708684934,
@@ -84,7 +86,7 @@ impl Fp2Parameters for Fq2Parameters {
             135547536859714
         ])),
 
-        //alpha^((q^1 - 1)/2)
+        // alpha^((q^1 - 1)/2)
         field_new!(Fq, BigInteger([
             14260497802974073023,
             5895249896161266456,

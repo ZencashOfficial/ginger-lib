@@ -1,3 +1,9 @@
+//! Montgomery arithmetics for large integers and models of extension fields.
+//!
+//! - Fp256, Fp320, Fp384 capturing moduli of length 4,5 and 6 words of 64 bits,
+//! - Fp768 and Fp832 capturing moduli of length 12 and 13 words of 64 bits,
+//! - Quadratic and cubic extensions of prime fields, degree 6 and 12 extension by towering.
+
 pub mod fp_256;
 pub use self::fp_256::*;
 

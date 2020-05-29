@@ -1,3 +1,8 @@
+//! Base field Fq, exponent field Fr, and embedding field Fq12 for the BLS12-381.
+//!
+//! The construction of the degree 12 extension of Fq (with q=1 mod 6) is based on a
+//! non-square and non-cube from a quadratic extension.
+
 pub mod fr;
 pub use self::fr::*;
 

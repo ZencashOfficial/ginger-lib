@@ -1,3 +1,6 @@
+//! Degree 4 extension of prime fields Fp with p = 1 mod 4 as towered quadratic extension.
+//! Includes pairing embedding field operations.
+
 use rand::{Rng, distributions::{Standard, Distribution}};
 use crate::{UniformRand, ToBits, FromBits, PrimeField, Error, BitSerializationError};
 
@@ -12,29 +15,46 @@ use crate::{bytes::{FromBytes, ToBytes}, fields::{Field, Fp2, Fp2Parameters, FpP
             biginteger::BigInteger, ToCompressedBits, FromCompressedBits};
 use crate::fields::SquareRootField;
 
-/// Model for quadratic extension field F4 as towered extension
+/// Model for quadratic extension field F4 as towered quadratic extensions.
 ///
 //     F4 = F2[Y]/(Y^2-X),
 //     F2 = Fp[X]/(X^2-alpha),
 ///
-/// using a "non-residue" alpha mod p such that (X^4-alpha) is irreducible over Fp.
-/// Its arithmetics includes pairing-relevant operations such as exponentiation and
-/// squaring on the r-th unit roots of F4 (cyclotomic exp. and squ.).
+/// using a quadradic "non-residue" alpha mod p, assuming that p = 1 mod 4
+/// (see [KM 2005](https://link.springer.com/chapter/10.1007/11586821_2)
+/// or [BS 2009](https://eprint.iacr.org/2009/556.pdf))
+///
+/// Its arithmetics includes cyclotomic operations as needed for pairings.
 
 pub trait Fp4Parameters: 'static + Send + Sync {
     type Fp2Params: Fp2Parameters;
 
+    /// This constant is not used, the fixed element X = (0,1) from Fp2
+    /// is chosen to build the field extension instead
     const NONRESIDUE: Fp2<Self::Fp2Params>;
 
-    /// Coefficients for the Frobenius map.
+    /// Coefficients of the powers of the Frobenius map applied to Y:
+    ///
+    /// pi^k(Y) = Y^(p^k-1) * Y = alpha^((p^k-1)/4) * Y
+    ///     = C1k * Y,
+    ///
+    /// k = 0,1,2,3.
     const FROBENIUS_COEFF_FP4_C1: [<Self::Fp2Params as Fp2Parameters>::Fp; 4];
 
+    /// Default implementation of multipication of Fp2 elements by `NONRESIDUE` as used for
+    /// implementing the Fp4 arithmetics.
+    /// This function is not used, a corresponding function for multiplication with X = (0,1)
+    /// is taken.
     #[inline(always)]
     fn mul_fp2_by_nonresidue(fe: &Fp2<Self::Fp2Params>) -> Fp2<Self::Fp2Params> {
         Self::NONRESIDUE * fe
     }
 }
 
+/// Fp4 elements are regarded as vector of Fp2 elements.
+///
+/// (c0,c1) = c0 + c1 * Y
+///
 #[derive(Derivative)]
 #[derivative(
 Default(bound = "P: Fp4Parameters"),
@@ -61,6 +81,7 @@ impl<P: Fp4Parameters> Fp4<P> {
         }
     }
 
+    // These lines of code assume that NONRESIDUE for the second extension is X from Fp2.
     pub fn mul_by_nonresidue(value: &Fp2<P::Fp2Params>) -> Fp2<P::Fp2Params> {
         let new_c0 = P::Fp2Params::mul_fp_by_nonresidue(&value.c1);
         let new_c1 = value.c0;
