@@ -59,7 +59,10 @@ impl<F: PrimeField, T: SmtPoseidonParameters<Fr=F>, P: PoseidonParameters<Fr=F>>
 }
 
 // Assumption: MERKLE_ARITY == 2
-impl<F: PrimeField + MulShort, T: SmtPoseidonParameters<Fr=F>, P: PoseidonParameters<Fr=F>> BigMerkleTree<F, T, P> {
+/*************************************************************************************/
+//impl<F: PrimeField + MulShort, T: SmtPoseidonParameters<Fr=F>, P: PoseidonParameters<Fr=F>> BigMerkleTree<F, T, P> {
+    /*************************************************************************************/
+impl<F: PrimeField, T: SmtPoseidonParameters<Fr=F>, P: PoseidonParameters<Fr=F>> BigMerkleTree<F, T, P> {
     pub fn new(width: usize, path_db: String, path_cache: String) -> Result<Self, Error> {
         let height = width as f64;
         let height = height.log(T::MERKLE_ARITY as f64) as usize;

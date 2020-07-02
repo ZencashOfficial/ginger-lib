@@ -510,8 +510,8 @@ pub type MNT6PoseidonSmtLazy = LazyBigMerkleTree<MNT6753Fr, MNT6753SmtPoseidonPa
 mod test {
     use crate::merkle_tree::field_based_mht::smt::{MNT4PoseidonHash, OperationLeaf, Coord, ActionLeaf, SmtPoseidonParameters, MNT6PoseidonHash};
     use crate::merkle_tree::field_based_mht::{FieldBasedMerkleTreeConfig, FieldBasedMerkleHashTree};
-    use crate::merkle_tree::field_based_mht::smt::parameters::{MNT4753SmtPoseidonParameters, MNT6753SmtPoseidonParameters};
-    use crate::merkle_tree::field_based_mht::smt::big_lazy_merkle_tree::{MNT4PoseidonSmt, MNT4PoseidonSmtLazy, MNT6PoseidonSmt, MNT6PoseidonSmtLazy};
+    use crate::merkle_tree::field_based_mht::smt::parameters::{MNT4753SmtPoseidonParameters, MNT6753SmtPoseidonParameters, BLS12_381SmtPoseidonParameters};
+    use crate::merkle_tree::field_based_mht::smt::big_lazy_merkle_tree::{MNT4PoseidonSmt, MNT4PoseidonSmtLazy, MNT6PoseidonSmt, MNT6PoseidonSmtLazy, LazyBigMerkleTree};
 
     use algebra::fields::mnt6753::Fr as MNT6753Fr;
     use algebra::fields::mnt4753::Fr as MNT4753Fr;
@@ -521,6 +521,8 @@ mod test {
     use rand_xorshift::XorShiftRng;
     use rand::{SeedableRng, RngCore};
     use rand::rngs::OsRng;
+    use algebra::fields::bls12_381::Fr;
+    use crate::merkle_tree::field_based_mht::smt::big_merkle_tree::BigMerkleTree;
 
     struct MNT4753FieldBasedMerkleTreeParams;
     struct MNT6753FieldBasedMerkleTreeParams;
@@ -537,6 +539,7 @@ mod test {
 
     type MNT4753FieldBasedMerkleTree = FieldBasedMerkleHashTree<MNT4753FieldBasedMerkleTreeParams>;
     type MNT6753FieldBasedMerkleTree = FieldBasedMerkleHashTree<MNT6753FieldBasedMerkleTreeParams>;
+
 
     #[test]
     fn process_leaves_mnt4_comp() {
@@ -785,5 +788,68 @@ mod test {
         assert_eq!(tree.root.unwrap(), smt.root, "Roots are not equal");
     }
 
+    /*********************************************************************************************************/
+    #[test]
+    fn process_leaves_bls12_comp() {
+
+        use algebra::UniformRand;
+        use algebra::fields::bls12_381::Fr as BLS12_381Fr;
+        use crate::crh::poseidon::parameters::BLS12_381PoseidonParameters;
+
+        pub type BLS12_381PoseidonSmt = BigMerkleTree<BLS12_381Fr, BLS12_381SmtPoseidonParameters, BLS12_381PoseidonParameters>;
+        pub type BLS12_381PoseidonSmtLazy = LazyBigMerkleTree<BLS12_381Fr, BLS12_381SmtPoseidonParameters, BLS12_381PoseidonParameters>;
+
+        let num_leaves = 2usize.pow(23);
+        let mut rng1 = XorShiftRng::seed_from_u64(9174123u64);
+        let mut leaves_to_insert: Vec<OperationLeaf<BLS12_381Fr>> = Vec::new();
+        let mut leaves_to_remove: Vec<OperationLeaf<BLS12_381Fr>> = Vec::new();
+
+        let n = 1000;
+
+        for _i in 0..n {
+            let random: u64 = OsRng.next_u64();
+            let idx = random % num_leaves as u64;
+            let elem = Fr::rand(&mut rng1);
+
+            leaves_to_insert.push(OperationLeaf { coord: Coord { height: 0, idx: idx as usize }, action: ActionLeaf::Insert, hash: Some(elem.clone()) });
+            leaves_to_remove.push(OperationLeaf { coord: Coord { height: 0, idx: idx as usize }, action: ActionLeaf::Remove, hash: None });
+        }
+
+        // Insertion
+
+        let root1;
+        let root3;
+        {
+            let mut smt1 = BLS12_381PoseidonSmt::new(num_leaves, String::from("./db_leaves") , String::from("./db_cache")).unwrap();
+            let leaves_to_process1 = leaves_to_insert.clone();
+            let now = Instant::now();
+            root1 = smt1.process_leaves_normal(leaves_to_process1);
+            let new_now = Instant::now();
+
+            let duration_normal = new_now.duration_since(now).as_millis();
+
+            println!("duration normal = {}", duration_normal);
+
+            // Removal
+
+            let leaves_to_process3 = leaves_to_remove.clone();
+            let now = Instant::now();
+            root3 = smt1.process_leaves_normal(leaves_to_process3);
+            let new_now = Instant::now();
+
+            let duration_normal = new_now.duration_since(now).as_millis();
+
+            println!("duration normal = {}",duration_normal);
+
+        }
+
+
+        //assert_eq!(root1, root2, "Roots are not equal");
+        //assert_eq!(root3, root4, "Roots are not equal");
+
+        //assert_eq!(root3, MNT6753SmtPoseidonParameters::EMPTY_HASH_CST[23], "Sequence of roots not equal");
+
+    }
+    /*********************************************************************************************************/
 
 }
