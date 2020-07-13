@@ -66,7 +66,10 @@ impl<F: PrimeField, T: SmtPoseidonParameters<Fr=F>, P: PoseidonParameters<Fr=F>>
 }
 
 // Assumption: MERKLE_ARITY == 2
-impl<F: PrimeField + MulShort, T: SmtPoseidonParameters<Fr=F>, P: PoseidonParameters<Fr=F>> LazyBigMerkleTree<F, T, P> {
+/*******************************************************************************************/
+//impl<F: PrimeField + MulShort, T: SmtPoseidonParameters<Fr=F>, P: PoseidonParameters<Fr=F>> LazyBigMerkleTree<F, T, P> {
+/*******************************************************************************************/
+impl<F: PrimeField, T: SmtPoseidonParameters<Fr=F>, P: PoseidonParameters<Fr=F>> LazyBigMerkleTree<F, T, P> {
     pub fn new(width: usize, path_db: String, path_cache: String) -> Result<Self, Error> {
         let height = width as f64;
         let height = height.log(T::MERKLE_ARITY as f64) as usize;
@@ -819,6 +822,8 @@ mod test {
 
         let root1;
         let root3;
+        let root2;
+        let root4;
         {
             let mut smt1 = BLS12_381PoseidonSmt::new(num_leaves, String::from("./db_leaves") , String::from("./db_cache")).unwrap();
             let leaves_to_process1 = leaves_to_insert.clone();
@@ -840,6 +845,28 @@ mod test {
             let duration_normal = new_now.duration_since(now).as_millis();
 
             println!("duration normal = {}",duration_normal);
+
+        }
+
+        {
+            let mut smt2 = BLS12_381PoseidonSmtLazy::new(num_leaves, String::from("./db_leaves") , String::from("./db_cache")).unwrap();
+            let leaves_to_process2 = leaves_to_insert.clone();
+            let now = Instant::now();
+            root2 = smt2.process_leaves(leaves_to_process2);
+            let new_now = Instant::now();
+
+            let duration_fast = new_now.duration_since(now).as_millis();
+
+            println!("duration fast = {}", duration_fast);
+
+            let leaves_to_process4 = leaves_to_remove.clone();
+            let now = Instant::now();
+            root4 = smt2.process_leaves(leaves_to_process4);
+            let new_now = Instant::now();
+
+            let duration_fast = new_now.duration_since(now).as_millis();
+
+            println!("duration fast = {}",duration_fast);
 
         }
 

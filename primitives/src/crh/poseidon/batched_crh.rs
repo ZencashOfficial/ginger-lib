@@ -12,7 +12,10 @@ use crate::crh::poseidon::{
 };
 
 use crate::crh::BatchFieldBasedHash;
-use crate::{Error, PoseidonParameters, matrix_mix_short};
+/************************************************************/
+//use crate::{Error, PoseidonParameters, matrix_mix_short};
+/************************************************************/
+use crate::{Error, PoseidonParameters, matrix_mix_short, matrix_mix};
 
 
 pub struct PoseidonBatchHash<F: PrimeField, P: PoseidonParameters<Fr = F>>{
@@ -20,7 +23,10 @@ pub struct PoseidonBatchHash<F: PrimeField, P: PoseidonParameters<Fr = F>>{
     _parameters: PhantomData<P>,
 }
 
-impl<F: PrimeField + MulShort, P: PoseidonParameters<Fr=F>> PoseidonBatchHash<F, P> {
+/*******************************************************************************/
+//impl<F: PrimeField + MulShort, P: PoseidonParameters<Fr=F>> PoseidonBatchHash<F, P> {
+/*******************************************************************************/
+impl<F: PrimeField, P: PoseidonParameters<Fr=F>> PoseidonBatchHash<F, P> {
 
     fn poseidon_full_round(vec_state: &mut [Vec<P::Fr>], round_cst_idx: &mut usize) {
 
@@ -143,7 +149,10 @@ impl<F: PrimeField + MulShort, P: PoseidonParameters<Fr=F>> PoseidonBatchHash<F,
 
             // Perform the matrix mix
             for i in 0..vec_state.len() {
-                matrix_mix_short::<F,P>(&mut vec_state[i]);
+                /**************************************************************/
+                //matrix_mix_short::<F,P>(&mut vec_state[i]);
+                /**************************************************************/
+                matrix_mix::<F,P>(&mut vec_state[i]);
             }
 
         }
@@ -154,7 +163,10 @@ impl<F: PrimeField + MulShort, P: PoseidonParameters<Fr=F>> PoseidonBatchHash<F,
 
             // Perform the matrix mix
             for i in 0..vec_state.len() {
-                matrix_mix_short::<F,P>(&mut vec_state[i]);
+                /**************************************************************/
+                //matrix_mix_short::<F,P>(&mut vec_state[i]);
+                /**************************************************************/
+                matrix_mix::<F,P>(&mut vec_state[i]);
             }
         }
 
@@ -165,7 +177,10 @@ impl<F: PrimeField + MulShort, P: PoseidonParameters<Fr=F>> PoseidonBatchHash<F,
 
             // Perform the matrix mix
             for i in 0..vec_state.len() {
-                matrix_mix_short::<F,P>(&mut vec_state[i]);
+                /**************************************************************/
+                //matrix_mix_short::<F,P>(&mut vec_state[i]);
+                /**************************************************************/
+                matrix_mix::<F,P>(&mut vec_state[i]);
             }
         }
 
@@ -173,8 +188,10 @@ impl<F: PrimeField + MulShort, P: PoseidonParameters<Fr=F>> PoseidonBatchHash<F,
     }
 }
 
-
-impl<F: PrimeField + MulShort, P: PoseidonParameters<Fr = F>> BatchFieldBasedHash for PoseidonBatchHash<F, P> {
+/*****************************************************************************************/
+//impl<F: PrimeField + MulShort, P: PoseidonParameters<Fr = F>> BatchFieldBasedHash for PoseidonBatchHash<F, P> {
+/*****************************************************************************************/
+impl<F: PrimeField, P: PoseidonParameters<Fr = F>> BatchFieldBasedHash for PoseidonBatchHash<F, P> {
     type Data = F;
     type Parameters = P;
 

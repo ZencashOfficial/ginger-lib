@@ -413,6 +413,7 @@ impl<F: PrimeField, T: SmtPoseidonParameters<Fr=F>, P: PoseidonParameters<Fr=F>>
         self.root = node_hash;
     }
 
+    /*******CHECK ******************/
     pub fn remove_subtree_from_cache(&mut self, coord: Coord, depth: usize) {
 
         if depth == 0 {
