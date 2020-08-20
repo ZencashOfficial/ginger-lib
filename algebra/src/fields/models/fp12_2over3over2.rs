@@ -1,3 +1,12 @@
+/* Model for order 12 extension F12 as towered extension
+
+    F12 = F6[Z]/(Z^2 - Y),
+     F6 = F2[Y]/(Y^3- NONRESIDUE),
+     F2 = Fp[X]/(X^2 - alpha),
+
+using quadratic and cubic non-residues alpha, NONRESIDUE, and Y, respectively.
+*/
+
 use rand::{Rng, distributions::{Standard, Distribution}};
 use crate::{UniformRand, ToBits, FromBits, PrimeField, Error};
 use std::{
@@ -21,6 +30,7 @@ pub trait Fp12Parameters: 'static + Send + Sync + Copy {
 }
 
 /// An element of Fp12, represented by c0 + c1 * v
+/// v= Y in the above notation
 #[derive(Derivative)]
 #[derivative(
     Default(bound = "P: Fp12Parameters"),

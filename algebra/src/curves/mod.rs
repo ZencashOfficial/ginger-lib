@@ -1,3 +1,13 @@
+//! Models, arithmetics and concrete instantiations of elliptic curves, pairing-friendly
+//! families of curves, and their pairing engine.
+//!
+//! - Weierstrass curves in affine and projective representations (homogeneous coordinates and Jacobi),
+//! - Montgomery and twisted Edwards curves, as well as
+//! - the pairing-friendly families MNT4, MNT6 and BLS12.
+//!
+//! Concrete instantiations of well-known useful curves from [Zexe](https://github.com/scipr-lab/zexe),
+//! [z-Cash](https://github.com/zcash/zcash) and [Coda](https://github.com/CodaProtocol/coda) are given.
+
 use crate::{bytes::{FromBytes, ToBytes}, fields::{Field, PrimeField, SquareRootField}, groups::Group};
 use crate::UniformRand;
 use std::{
@@ -22,6 +32,7 @@ pub mod tests;
 
 pub use self::models::*;
 
+/// Interfaces for low-level pairing related operations.
 pub trait PairingEngine: Sized + 'static + Copy + Debug + Sync + Send {
     /// This is the scalar field of the G1/G2 groups.
     type Fr: PrimeField + SquareRootField + Into<<Self::Fr as PrimeField>::BigInt>;
@@ -108,8 +119,7 @@ pub trait PairingEngine: Sized + 'static + Copy + Debug + Sync + Send {
     }
 }
 
-/// Projective representation of an elliptic curve point guaranteed to be
-/// in the correct prime order subgroup.
+/// Interfaces for projective curve operations.
 pub trait ProjectiveCurve:
     Eq
     + Sized
@@ -193,8 +203,7 @@ pub trait ProjectiveCurve:
     fn recommended_wnaf_for_num_scalars(num_scalars: usize) -> usize;
 }
 
-/// Affine representation of an elliptic curve point guaranteed to be
-/// in the correct prime order subgroup.
+/// Interfaces for affine curve operations.
 pub trait AffineCurve:
     Eq
     + Sized
@@ -252,6 +261,7 @@ pub trait AffineCurve:
     fn mul_by_cofactor_inv(&self) -> Self;
 }
 
+/// Interfaces for high-level pairing operations of pairing-friendly curves.
 pub trait PairingCurve: AffineCurve {
     type Engine: PairingEngine<Fr = Self::ScalarField>;
     type Prepared: ToBytes + FromBytes + Default + Clone + Eq + PartialEq + Send + Sync + Debug + 'static;

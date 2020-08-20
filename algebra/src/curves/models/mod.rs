@@ -1,3 +1,6 @@
+//! Models for little Weierstrass and twisted Edwards curves, as well as for
+//! the BLS12, MNT4/6 families of curves.
+
 use crate::{biginteger::BigInteger, fields::{Field, PrimeField, SquareRootField}};
 
 pub mod bls12;

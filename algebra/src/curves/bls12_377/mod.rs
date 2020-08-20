@@ -1,3 +1,15 @@
+//! [Zexe's BLS12-377](https://eprint.iacr.org/2018/962.pdf), the outer curve of edwards_bls12 and
+//! inner curve of the sw6.
+//! Its a BLS curve with embedding degree 12 and base field size is 377 bits.
+//!
+//! Its security against modern version of the number field sieve (STNFS) is estimated as 125 bit
+//! by [HG 2020](https://eprint.iacr.org/2020/351.pdf).
+
+// The HG 2020 result states an unexpected negligible loss in security compared to the recommendations
+// from [Guillevic 2019](https://eprint.iacr.org/2019/1371) which establishes a base field size
+// of 446 Bit to accomodate that security level.
+// I hope that HG will give us some hints on that.
+
 use crate::{
     curves::{
         bls12::{
@@ -20,6 +32,7 @@ use self::{g1::Bls12_377G1Parameters, g2::Bls12_377G2Parameters};
 pub struct Bls12_377Parameters;
 
 impl Bls12Parameters for Bls12_377Parameters {
+    /// BLS parameter x = 9586122913090633729
     const X: &'static [u64] = &[0x8508c00000000001];
     /// `x` is positive.
     const X_IS_NEGATIVE: bool = false;

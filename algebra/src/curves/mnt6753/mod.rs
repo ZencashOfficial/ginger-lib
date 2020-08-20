@@ -1,3 +1,10 @@
+//! [Coda's MNT6-753](https://codaprotocol.github.io/snark-challenge/MNT6753.html.) curve of its MNT4/6 cycle
+//! for fully recursive SNARKs.
+//! Both base field as well as prime order subgroup are of size 753 bits.
+//!
+//! According to a security estimate similar to [Guillevic 2019](https://eprint.iacr.org/2019/1371),
+//! its security level is above 128 Bit.
+
 use crate::field_new;
 use crate::{
     curves::{PairingCurve, PairingEngine},
@@ -25,9 +32,11 @@ mod tests;
 pub struct MNT6_753Parameters;
 
 impl MNT6Parameters for MNT6_753Parameters {
-    /// The Frobenius trace of the MNT6 curve is
-    /// t = 204691208819330962009469868104636132783269696790011977400223898462431810102935615891307667367766898917669754470401
-    /// Our Ate pairing Miller loop count is the absolute value of the Frobenius trace minus 1
+    // The Frobenius trace of the MNT6 curve is
+    /// t =
+    /// 2046912088193309620094698681046361327832696967900119774002238984624318\
+    /// 10102935615891307667367766898917669754470401,
+    /// ATE_LOOP_COUNT = |t - 1|
     const ATE_LOOP_COUNT: &'static [u64] = &[
         0x7a7713041ba18000,
         0x6b0344c4e2c428b0,
@@ -37,8 +46,8 @@ impl MNT6Parameters for MNT6_753Parameters {
         0x15474b1d641a3fd,
     ];
 
-    //Output of find_wnaf(ate_loop_count), already trimmed of leading zeros and MSB
-    //starting with least significant bit
+    /// Output of find_wnaf(ate_loop_count), already trimmed of leading zeros and MSB
+    /// starting with least significant bit
     const WNAF: &'static [i32] = &[
         0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-1,0,1,0,0,0,1,0,-1,0,0,-1,0,0,1,0,0,0,0,1,0,0,0,0,0,-1,0,1,0,
         1,0,0,0,-1,0,0,-1,0,0,0,1,0,1,0,-1,0,0,0,1,0,0,0,0,-1,0,-1,0,1,0,0,1,0,1,0,0,0,0,1,0,0,0,-1,
@@ -50,12 +59,14 @@ impl MNT6Parameters for MNT6_753Parameters {
         -1,0,0,0,-1,0,1,0,-1,0,0,-1,0,0,-1,0,0,1,0,0,0,-1,0,-1,0,0,0,0,0,0,0,0,1,0,0,1,0,-1,0,1,0,0,
         0,0,1,0,0,-1,0,-1,0,-1,0,0,0,1,0,0,-1,0,-1,0,1,0,1,0,-1,0,0,1,0,0,1,0,1,0,1,0
     ];
-    // Frobenius trace of this curve is non-negative
+    /// t-1 of this curve is non-negative
     const ATE_IS_LOOP_COUNT_NEG: bool = false;
 
+    /// Twist element needs to be the fixed element X in our implementation
     const TWIST: Fq3 = field_new!(Fq3, FQ_ZERO, FQ_ONE, FQ_ZERO);
 
     // I would do the hard coded definition inside G2, and just refer to from here.
+    /// TWIST_COEFF_A = X^2 * a
     const TWIST_COEFF_A: Fq3 = field_new!(Fq3, 
         FQ_ZERO,
         FQ_ZERO,
@@ -75,9 +86,11 @@ impl MNT6Parameters for MNT6_753Parameters {
         ])),
     );
 
-    // m_1 = 1
+    /// m1 = 1
     const FINAL_EXPONENT_LAST_CHUNK_1: BigInteger = BigInteger([0x1, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0]);
-    // m_0 = 691208819330962009469868104636132783269696790011977400223898462431810102935615891307667367766898917669754470400
+    /// m0 =
+    /// 2046912088193309620094698681046361327832696967900119774002238984624318\
+    /// 10102935615891307667367766898917669754470400
     const FINAL_EXPONENT_LAST_CHUNK_ABS_OF_W0: BigInteger =
         BigInteger([
             0x7a7713041ba18000,
@@ -93,7 +106,7 @@ impl MNT6Parameters for MNT6_753Parameters {
             0x0,
             0x0,
         ]);
-    // m_0 is positive
+    /// m0 is positive
     const FINAL_EXPONENT_LAST_CHUNK_W0_IS_NEG: bool = false;
 
     type Fp = Fq;

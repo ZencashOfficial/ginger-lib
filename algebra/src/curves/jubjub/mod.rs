@@ -1,3 +1,9 @@
+//! [z-Cash's JubJub](https://z.cash/technology/jubjub/), the inner curve of the BLS12-381.
+//! JuJub is a twisted Edwards curve with base field size 255 bit, and a prime order subgroup of
+//! 252 bit.
+//!
+//! Serves a security level of about 128 bit.
+
 use crate::field_new;
 use crate::{
     biginteger::BigInteger256,

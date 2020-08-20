@@ -1,3 +1,5 @@
+//! Model and method interfaces for the Ate pairing pre-computations in G2.
+
 use crate::{bytes::ToBytes, curves::{
     bls12::{Bls12Parameters, TwistType},
     models::SWModelParameters,
@@ -18,9 +20,9 @@ pub type G2Projective<P> = GroupProjective<<P as Bls12Parameters>::G2Parameters>
     PartialEq(bound = "P: Bls12Parameters"),
     Eq(bound = "P: Bls12Parameters")
 )]
+/// Stores the coefficients of the line evaluations as calculated in
+/// [ABLR 2013](https://eprint.iacr.org/2013/722.pdf).
 pub struct G2Prepared<P: Bls12Parameters> {
-    // Stores the coefficients of the line evaluations as calculated in
-    // https://eprint.iacr.org/2013/722.pdf
     pub ell_coeffs: Vec<(Fp2<P::Fp2Params>, Fp2<P::Fp2Params>, Fp2<P::Fp2Params>)>,
     pub infinity:   bool,
 }

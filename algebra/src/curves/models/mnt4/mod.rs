@@ -1,64 +1,70 @@
+//! Model for MNT4 curves and their Ate pairing.
+//!
+//! Supports standard efficiency measures for pairings e:G1 x G2 -> GT :
+//!
+//! - G2 is represented by a quadratic twist over a quadratic extension of the base field,
+//! - the Frobenius operator is applied to reduce the cost of the final exponentiation, and
+//! - we do pre-computations of (essentially) the line coefficients of the Miller loop.
+//!
+//! The loop count allows signed bit representation (flipped Miller loop), thus it supports
+//! low NAF-weight Frobenius trace.
+
 use crate::{Fp2, BigInteger768 as BigInteger, PrimeField, SquareRootField, Fp2Parameters, Fp4Parameters, SWModelParameters, ModelParameters, PairingEngine, Fp4, PairingCurve, Field};
 use std::marker::PhantomData;
 use std::ops::{Add, Mul, Sub};
 
 
-// Ate pairing e: G_1 x G_2 -> G_T for MNT4 curves over prime fields
-//
-//     E: y^2 = x^3 + a*x + b mod p.
-//
-// Its embedding field F4 is regarded as towered extension
-//
-//     F4 = F2[Y]/(Y^2-X),
-//     F2 = Fp[X]/(X^2-alpha),
-//
-// using a "non-residue" alpha mod p such that (X^4-alpha) is irreducible over Fp.
-// We apply standard efficiency measures (see, e.g. ): G_2 is represented by a subgroup
-// of prime order r=ord(G_1) of the quadratic twist
-//
-//     E': y^2 = x^3 + (a*twist^2) x + b*twist^3
-//
-// over F2, with twist=X, the Frobenius operator is applied to reduce the cost of the 
-// final exponentiation, and we do pre-computations of (essentially) the line coefficients 
-// of the Miller loop.
-// The loop count allows signed bit representation, so this variant supports curves with Frobenius
-// trace having low Hamming weight NAF.
-
+/// Parameters for MNT4 curves E: y^2 = x^3 + a*x + b mod p as needed for the Ate pairing.
+///
+/// The embedding field F4 of E is regarded as towered extension
+///
+///     F4 = F2[Y]/(Y^2-X),
+///     F3 = Fp[X]/(X^2-alpha),
+///
+/// using a "non-residue" alpha mod p such that (X^4-alpha) is irreducible over Fp,
+/// and G2 is represented by a prime order subgroup of the quadratic twist
+///
+///     E2: y^2 = x^3 + (a*twist^2) x + b*twist^3
+///
+/// over F2, where the twist element twist = X = Y^2 is kept fixed in
+/// our implementation.
+/// The final pairing exponent is decomposed as (p^4-1)/r = (p-1) (p+1) (p^2 + 1)/r,
+/// whereas
+///
+///      (p^2 +1)/r = m1 * p + m0,
+///
+/// with non-negative m1, 0 <= m1 < p, and (possibly signed) m0,  |m0| <= p/2.
 pub trait MNT4Parameters: 'static {
-    // the loop count for the Miller loop, equals the |Frobenius trace of E - 1|
+    /// The loop count for the (flipped) Miller loop, equals |t - 1|, where t is the
+    /// trace of E.
     const ATE_LOOP_COUNT: &'static [u64];
-    // the non-adjacent normal form of ATE_LOOP_COUNT trimmed of leading zeroes and
-    // without MSB, starting with the least significant bit
+    /// Non-adjacent normal form of ``const ATE_LOOP_COUNT`` trimmed of leading zeroes and
+    /// without MSB, starting with the least significant bit.
     const WNAF: &'static [i32];
-    // true/false depending whether the Frobenius trace is negative/positive
+    /// Set true/false depending on the sign of t-1
     const ATE_IS_LOOP_COUNT_NEG: bool;
-    // The twist factor twist=Y^2  for
-    // E': y'^2  = x'^3 + a*twist^2*x + twist^3 * b
-    // as needed for the point evaluation of the Miller loop lines
+    /// The twist element for E2, where twist = Y^2 = X is fixed in our implementation.
     const TWIST: Fp2<Self::Fp2Params>;
-    // Weierstrass coefficient a'=a*omega^4= a*alpha of the quadratic twist E'
-    // as needed for the point evaluation of the Miller loop lines
+    /// TWIST_COEFF_A = twist^2 = alpha*a
+    /// (As above, it doesn't make sense to leave this flexible if we keep the non-residue
+    /// for the second extension field fixed)
     const TWIST_COEFF_A: Fp2<Self::Fp2Params>;
-    // the final pairing exponent is decomposed as
-    //      (p^4-1)/r = (p^2-1) (p^2 + 1)/r,
-    // wheras
-    //      (p^2 +1)/r = m_1*p + m_0,
-    // where m_1, 0<= m_1 < p, is
+    /// m1 from above.
     const FINAL_EXPONENT_LAST_CHUNK_1: BigInteger;
-    // and m_0, |m_0| <= p/2, equal to
+    /// Absolute value of m0 from above.
     const FINAL_EXPONENT_LAST_CHUNK_ABS_OF_W0: BigInteger;
-    // is set true/false depending on the sign of m_0
+    /// Is set true/false depending on the sign of m0.
     const FINAL_EXPONENT_LAST_CHUNK_W0_IS_NEG: bool;
 
-    // base field F of the curve
+    /// Base field F of the curve
     type Fp: PrimeField + SquareRootField + Into<<Self::Fp as PrimeField>::BigInt>;
-    // parameters of the quadratic extension field F2
+    /// Parameters of the quadratic extension field F2
     type Fp2Params: Fp2Parameters<Fp = Self::Fp>;
-    // paramters of the embedding field F4
+    /// Parameters of the embedding field F4
     type Fp4Params: Fp4Parameters<Fp2Params = Self::Fp2Params>;
-    // parameters for E with defining field F
+    /// Parameters for E with defining field F
     type G1Parameters: SWModelParameters<BaseField = Self::Fp>;
-    // parameters for the quadratic twist E' over F2
+    /// Parameters for the quadratic twist E2 over F2
     type G2Parameters: SWModelParameters<
         BaseField = Fp2<Self::Fp2Params>,
         ScalarField = <Self::G1Parameters as ModelParameters>::ScalarField,
@@ -74,10 +80,14 @@ pub use self::{
 };
 use crate::curves::models::mnt4::g2::G2PreparedCoefficients;
 
+/// MNT4 pairing structure
 #[derive(Derivative)]
 #[derivative(Copy, Clone, PartialEq, Eq, Debug, Hash)]
 pub struct MNT4p<P: MNT4Parameters>(PhantomData<fn() -> P>);
 
+/// The Ate-pairing related functions
+/// - ate_miller_loop, and
+/// - final_exponentiation.
 impl<P: MNT4Parameters> MNT4p<P> {
     // Takes as input a (non-zero) point P in G1 in affine coordinates, and outputs a
     // precomputed version of it for pairing purposes, which is comprised of
@@ -153,7 +163,7 @@ impl<P: MNT4Parameters> MNT4p<P> {
         g2p
     }
 
-
+    /// Computes the Miller loop given the pre-computed data for G1 and G2.
     pub fn ate_miller_loop(p: &G1Prepared<P>, q: &G2Prepared<P>) -> Fp4<P::Fp4Params> {
 
         let mut f = Fp4::<P::Fp4Params>::one();
@@ -223,6 +233,7 @@ impl<P: MNT4Parameters> MNT4p<P> {
         f
     }
 
+    /// Final exponentiation of the Ate pairing.
     pub fn final_exponentiation(value: &Fp4<P::Fp4Params>) -> Fp4<P::Fp4Params> {
         let value_inv = value.inverse().unwrap();
         // the "easy part"
@@ -269,6 +280,7 @@ impl<P: MNT4Parameters> MNT4p<P> {
     }
 }
 
+/// Pairing Engine for MNT4p.
 impl<P: MNT4Parameters> PairingEngine for MNT4p<P>
     where
         G1Affine<P>: PairingCurve<

@@ -1,3 +1,11 @@
+//! Model for BLS12 curves and their Ate pairing.
+//!
+//! Supports the following standard efficiency measures for pairings:
+//!
+//! - G2 is represented by a sextic twist over a quadratic extension of the base field,
+//! - the Frobenius operator is applied to reduce the cost of the final exponentiation, and
+//! - we do pre-computations of (essentially) the line coefficients of the Miller loop.
+
 use crate::{
     curves::{
         models::{ModelParameters, SWModelParameters},
@@ -14,17 +22,44 @@ use crate::{
 use std::marker::PhantomData;
 
 pub enum TwistType {
-    M,
-    D,
+    M, //  E': y^2 = x^3 + b/i^5 which is isomorphic to y^2=x^3 + i*b
+    D, // E': y^2 = x^3 + b/i
 }
 
+/// Parameters of an BLS12 curve E: y^2 = x^3 + b mod p as needed by the Ate pairing.
+///
+/// As in [ABLR 2013](https://eprint.iacr.org/2013/722.pdf), the embedding field F12 is regarded
+/// as towered extension
+///
+///     F12 = F6[Z]/(Z^2-Y),
+///     F6 = F2[Y]/(Y^3-U),
+///     F2 = Fp[X]/(X^2-alpha),
+///
+/// using a non-square alpha from Fp, and a non-cube U from F2, respectively.
+/// We apply standard efficiency measures: G2 is represented by a subgroup
+/// of prime order r=ord(G1) of the sextic twist over F2,
+///
+///     E6: y^2 = x^3 + b/i,
+/// or
+///
+///     E6: y^2 = x^3 + b/i^5,
+///
+/// depending on the twist type D and M, respectively.
+/// Here, the twist element i = U, the non-residue for building F6 on top of F2.
 pub trait Bls12Parameters: 'static {
+    // Ate loop count, equals abs(Frobenius trace - 1)
     const X: &'static [u64];
+    // sign of the Ate loop count
     const X_IS_NEGATIVE: bool;
+    // type of the sextic twist
     const TWIST_TYPE: TwistType;
+    // Base field
     type Fp: PrimeField + SquareRootField + Into<<Self::Fp as PrimeField>::BigInt>;
+    // extension field for the sextic twist
     type Fp2Params: Fp2Parameters<Fp = Self::Fp>;
+    // intermediate field as cubic extension of Fp2
     type Fp6Params: Fp6Parameters<Fp2Params = Self::Fp2Params>;
+    // embedding field
     type Fp12Params: Fp12Parameters<Fp6Params = Self::Fp6Params>;
     type G1Parameters: SWModelParameters<BaseField = Self::Fp>;
     type G2Parameters: SWModelParameters<

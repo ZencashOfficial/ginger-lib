@@ -1,3 +1,11 @@
+//! [Coda's MNT4-753](https://codaprotocol.github.io/snark-challenge/MNT4753.html) curve of
+//! its MNT4/6 cycle for fully recursive SNARKs.
+//! Both base field as well as prime order subgroup are of size 753 bits.
+//!
+//! Supposed to satisfy a security level of 128 Bit, but a recent estimate in the manner of
+//! [Guillevic 2019](https://eprint.iacr.org/2019/1371) lowers it down to 112 Bit.
+
+
 use crate::field_new;
 use crate::{
     curves::{PairingCurve, PairingEngine},
@@ -26,8 +34,12 @@ pub struct MNT4_753Parameters;
 
 impl MNT4Parameters for MNT4_753Parameters {
     /// The Frobenius trace of the MNT4 curve is
-    /// t = -204691208819330962009469868104636132783269696790011977400223898462431810102935615891307667367766898917669754470399
-    /// Our Ate pairing Miller loop count is the absolute value of the Frobenius trace minus 1
+    /// t =
+    ///-204691208819330962009469868104636132783269696790011977400223898462431\
+    /// 810102935615891307667367766898917669754470399
+    ///
+    // Our Ate pairing Miller loop count is the absolute value of the Frobenius trace minus 1
+    /// ATE_LOOP_COUNT = |t - 1|
     const ATE_LOOP_COUNT: &'static [u64] = &[
         0x7a7713041ba18000,
         0x6b0344c4e2c428b0,
@@ -54,10 +66,12 @@ impl MNT4Parameters for MNT4_753Parameters {
     /// Frobenius trace of this curve is negative
     const ATE_IS_LOOP_COUNT_NEG: bool = true;
 
+    /// Our implementation demands twist element = X.
     const TWIST: Fq2 = field_new!(Fq2, FQ_ZERO, FQ_ONE);
 
     // I would do the hard coded definition inside G2, and just refer to from here.
-    const TWIST_COEFF_A: Fq2 = field_new!(Fq2, 
+    /// TWIST_COEFF_A = alpha * a
+    const TWIST_COEFF_A: Fq2 = field_new!(Fq2,
         field_new!(Fq, BigInteger([ // = COEFF_A
             0xeb354e6121cdccad,
             0x9589bfe5ea49ae4f,
@@ -75,9 +89,11 @@ impl MNT4Parameters for MNT4_753Parameters {
         FQ_ZERO,
     );
 
-    // m_1 = 1
+    /// m1 = 1
     const FINAL_EXPONENT_LAST_CHUNK_1: BigInteger = BigInteger([0x1, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0]);
-    // |m_0| =  204691208819330962009469868104636132783269696790011977400223898462431810102935615891307667367766898917669754470399
+    /// |m_0| =
+    /// 204691208819330962009469868104636132783269696790011977400223898462431\
+    /// 810102935615891307667367766898917669754470399
     const FINAL_EXPONENT_LAST_CHUNK_ABS_OF_W0: BigInteger = BigInteger([
         0x7a7713041ba17fff,
         0x6b0344c4e2c428b0,
@@ -92,7 +108,7 @@ impl MNT4Parameters for MNT4_753Parameters {
         0x0,
         0x0,
     ]);
-    //sign of m_0 is negative
+    /// sign of m0 is negative
     const FINAL_EXPONENT_LAST_CHUNK_W0_IS_NEG: bool = true;
 
     type Fp = Fq;
@@ -138,7 +154,7 @@ impl PairingCurve for G2Affine {
     }
 }
 
-// field element 0 in Montgomery representation
+/// field element 0 in Montgomery representation
 pub const FQ_ZERO: Fq = field_new!(Fq, BigInteger([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]));
-// field element 1 in Montgomery representation
+/// field element 1 in Montgomery representation
 pub const FQ_ONE: Fq = field_new!(Fq, FqParameters::R);

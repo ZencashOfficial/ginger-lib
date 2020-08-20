@@ -1,3 +1,5 @@
+//! Module for affine Weierstrass arithmetics and projective Jacobian arithmetics
+
 use rand::{Rng, distributions::{Standard, Distribution}};
 use crate::curves::models::SWModelParameters as Parameters;
 use crate::UniformRand;
@@ -14,6 +16,7 @@ use crate::{
 };
 use std::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 
+/// The affine representation of a curve point (re-naming appreciated)
 #[derive(Derivative)]
 #[derivative(
     Copy(bound = "P: Parameters"),
@@ -206,6 +209,7 @@ impl<P: Parameters> Default for GroupAffine<P> {
     }
 }
 
+/// The Jacobi representation of a curve point (re-naming appreciated)
 #[derive(Derivative)]
 #[derivative(
     Copy(bound = "P: Parameters"),

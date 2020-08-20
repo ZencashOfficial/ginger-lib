@@ -1,3 +1,5 @@
+//! G1 parameters for the MNT6-298.
+
 use crate::{field_new, FromBytes};
 use crate::{
     biginteger::BigInteger320,
