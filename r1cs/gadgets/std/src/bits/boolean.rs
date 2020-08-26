@@ -604,8 +604,11 @@ impl Boolean {
         }
     }
 
-    /// Asserts that this bit_gadget representation is "in
-    /// the field" when interpreted in big endian.
+    /* Asserts that this bit_gadget representation is "in the field" when interpreted
+    in big endian. In other words, it enforces the
+        sum_{i} b_i * 2^i,
+    not to exceed the field modulus.
+    */
     pub fn enforce_in_field<ConstraintF, CS, F: PrimeField>(
         mut cs: CS,
         bits: &[Self],

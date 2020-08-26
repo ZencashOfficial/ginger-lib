@@ -1,3 +1,19 @@
+/*
+Definition of the degree 12 extension field gadget Fp12Gadget as quadratic extension of Fp6,
+and implementation of the following gadgets for it:
+    - FieldGadget:
+        mul, mul_eq and inverse gadget using Karatsuba mult.
+        square gadget implementation improves default by one constraint
+        NEqGadget has to be checked if it meets it's purpose by demanding all three components to
+        be different.
+    - cyclotomic operations gadgets as used by Ate pairing gadgets
+    - optimizations of mul for elements of special form as used by the Ate pairing gadget
+    - AllocGadget, CloneGadget, ConstantGadget,
+    - PartialEqGadget, ConditionalEqGadget, NEqGadget,
+    - CondSelectGadget, TwoBitLookupGadget, ThreeBitNegLookupGadget,
+    - ToBitsGadget, FromBitsGadget, ToBytesGadget
+*/
+
 use r1cs_core::{ConstraintSystem, SynthesisError};
 
 use algebra::{
@@ -51,7 +67,8 @@ where
         }
     }
 
-    /// Multiply by quadratic nonresidue v.
+    /// Multiply by (quadratic) nonresidue which defines the arithmetics of the quadratic extension
+    /// field Fp12
     #[inline]
     pub(crate) fn mul_fp6_by_nonresidue<CS: ConstraintSystem<ConstraintF>>(
         cs: CS,
@@ -72,7 +89,10 @@ where
         Ok(self)
     }
 
-    /// Multiplies by an element of the form (c0 = (c0, c1, 0), c1 = (0, d1, 0))
+    /* Optimized Karatsuba multiplication of Fp12Gadgets a = a0 + a1*Y by Fp12Gadgets b= b0 + b1 * Y
+    of the form
+        b0 = (c0, c1, 0), b1 = (0, d1, 0)
+    */
     #[inline]
     pub fn mul_by_014<CS: ConstraintSystem<ConstraintF>>(
         &self,
@@ -97,7 +117,10 @@ where
         Ok(Self::new(new_c0, c1))
     }
 
-    /// Multiplies by an element of the form (c0 = (c0, 0, 0), c1 = (d0, d1, 0))
+    /* Optimized Karatsuba multiplication of Fp12Gadgets a = a0 + a1*Y by Fp12Gadgets b= b0 + b1 * Y
+    of the form
+        b0 = (c0, 0, 0), b1 = (d0, d1, 0)
+    */
     #[inline]
     pub fn mul_by_034<CS: ConstraintSystem<ConstraintF>>(
         &self,
@@ -106,24 +129,35 @@ where
         d0: &Fp2Gadget<P, ConstraintF>,
         d1: &Fp2Gadget<P, ConstraintF>,
     ) -> Result<Self, SynthesisError> {
-        let a0 = self.c0.c0.mul(cs.ns(|| "a0"), &c0)?;
-        let a1 = self.c0.c1.mul(cs.ns(|| "a1"), &c0)?;
-        let a2 = self.c0.c2.mul(cs.ns(|| "a2"), &c0)?;
+        // why different notation in the code?
+        // Comments as well as cs namespaces in usual Karatsuba notation.
+        // v0 = a0 * b0
+        let a0 = self.c0.c0.mul(cs.ns(|| "v0.0"), &c0)?;
+        let a1 = self.c0.c1.mul(cs.ns(|| "v0.1"), &c0)?;
+        let a2 = self.c0.c2.mul(cs.ns(|| "v0.2"), &c0)?;
         let a = Fp6Gadget::<P, ConstraintF>::new(a0, a1, a2);
-        let b = self.c1.mul_by_c0_c1_0(cs.ns(|| "b"), &d0, &d1)?;
 
-        let c0 = c0.add(cs.ns(|| "c0 + d0"), &d0)?;
+        // v1 = a1 * b1
+        let b = self.c1.mul_by_c0_c1_0(cs.ns(|| "v1"), &d0, &d1)?;
+
+        // b0  + b1
+        let c0 = c0.add(cs.ns(|| "b0 + b1"), &d0)?;
         let c1 = d1;
+
         let e = self
             .c0
-            .add(cs.ns(|| "self.c0 + self.c1"), &self.c1)?
-            .mul_by_c0_c1_0(cs.ns(|| "compute e"), &c0, &c1)?;
-        let a_plus_b = a.add(cs.ns(|| "a + b"), &b)?;
-        let c1 = e.sub(cs.ns(|| "e - (a + b)"), &a_plus_b)?;
-        let c0 = Self::mul_fp6_by_nonresidue(cs.ns(|| "b *nr"), &b)?.add(cs.ns(|| "plus a"), &a)?;
+            .add(cs.ns(|| "a0 + a1"), &self.c1)?
+            .mul_by_c0_c1_0(cs.ns(|| "(a0 + a1)(b0 + b1)"), &c0, &c1)?;
+        let a_plus_b = a.add(cs.ns(|| "v0 + v1"), &b)?;
+        let c1 = e.sub(cs.ns(|| "(a0 + a1)(b0 + b1) - (v0 + v1)"), &a_plus_b)?;
+        let c0 = Self::mul_fp6_by_nonresidue(cs.ns(|| "v1 * nonresidue"), &b)?
+            .add(cs.ns(|| "plus v0"), &a)?;
 
         Ok(Self::new(c0, c1))
     }
+
+    /* gadgets for the cyclotomic operations (used in the Ate pairing evaluation)
+    */
 
     pub fn cyclotomic_square<CS: ConstraintSystem<ConstraintF>>(
         &self,
@@ -270,6 +304,8 @@ where
     }
 }
 
+/* FieldGadget implementation for Fp12Gadget as quadratic extension of Fp6.
+*/
 impl<P, ConstraintF: PrimeField + SquareRootField> FieldGadget<Fp12<P>, ConstraintF> for Fp12Gadget<P, ConstraintF>
 where
     P: Fp12Parameters,
@@ -304,22 +340,9 @@ where
         Ok(Self::new(c0, c1))
     }
 
-
-    #[inline]
-    fn conditionally_add_constant<CS: ConstraintSystem<ConstraintF>>(
-        &self,
-        mut cs: CS,
-        bit: &Boolean,
-        coeff: Fp12<P>,
-    ) -> Result<Self, SynthesisError> {
-        let c0 = self
-            .c0
-            .conditionally_add_constant(cs.ns(|| "c0"), bit, coeff.c0)?;
-        let c1 = self
-            .c1
-            .conditionally_add_constant(cs.ns(|| "c1"), bit, coeff.c1)?;
-        Ok(Self::new(c0, c1))
-    }
+    /*
+    addition gadgets
+    */
 
     #[inline]
     fn add<CS: ConstraintSystem<ConstraintF>>(
@@ -342,6 +365,49 @@ where
         self.c1.add_in_place(cs.ns(|| "c1"), &other.c1)?;
         Ok(self)
     }
+
+    #[inline]
+    fn conditionally_add_constant<CS: ConstraintSystem<ConstraintF>>(
+        &self,
+        mut cs: CS,
+        bit: &Boolean,
+        coeff: Fp12<P>,
+    ) -> Result<Self, SynthesisError> {
+        let c0 = self
+            .c0
+            .conditionally_add_constant(cs.ns(|| "c0"), bit, coeff.c0)?;
+        let c1 = self
+            .c1
+            .conditionally_add_constant(cs.ns(|| "c1"), bit, coeff.c1)?;
+        Ok(Self::new(c0, c1))
+    }
+
+    #[inline]
+    fn add_constant<CS: ConstraintSystem<ConstraintF>>(
+        &self,
+        mut cs: CS,
+        other: &Fp12<P>,
+    ) -> Result<Self, SynthesisError> {
+        let c0 = self.c0.add_constant(cs.ns(|| "c0"), &other.c0)?;
+        let c1 = self.c1.add_constant(cs.ns(|| "c1"), &other.c1)?;
+
+        Ok(Self::new(c0, c1))
+    }
+
+    #[inline]
+    fn add_constant_in_place<CS: ConstraintSystem<ConstraintF>>(
+        &mut self,
+        mut cs: CS,
+        other: &Fp12<P>,
+    ) -> Result<&mut Self, SynthesisError> {
+        self.c0.add_constant_in_place(cs.ns(|| "c0"), &other.c0)?;
+        self.c1.add_constant_in_place(cs.ns(|| "c1"), &other.c1)?;
+        Ok(self)
+    }
+
+    /*
+    substraction gadgets
+    */
 
     #[inline]
     fn sub<CS: ConstraintSystem<ConstraintF>>(
@@ -385,6 +451,10 @@ where
         Ok(self)
     }
 
+    /*
+    multiplication gadgets
+    */
+
     #[inline]
     fn mul<CS: ConstraintSystem<ConstraintF>>(
         &self,
@@ -419,6 +489,34 @@ where
                 .sub(cs.ns(|| "res - v0 - v1"), &v1)?
         };
 
+        Ok(Self::new(c0, c1))
+    }
+
+    fn mul_by_constant<CS: ConstraintSystem<ConstraintF>>(
+        &self,
+        mut cs: CS,
+        other: &Fp12<P>,
+    ) -> Result<Self, SynthesisError> {
+        /* ordinary complex multiplication
+            c0 + c1 *X = (a0 + a1 * X) * (b0 + b1 * X)
+           of a field gadget self =  (a0 + a1 * X) by a constant element (b0 + b1 * X).
+            c0 = a0*b0 + non_residue *a1*b1
+            c1 = a0*b1 + a1*b0
+        Doesn't need any constraints; returns linear combinations of a0, a1.
+        */
+        let (a0, a1) = (&self.c0, &self.c1);
+        let (b0, b1) = (other.c0, other.c1);
+        let mut v0 = a0.mul_by_constant(&mut cs.ns(|| "v0"), &b0)?;
+        let mut v1 = Self::mul_fp6_by_nonresidue(&mut cs.ns(|| "v1"), a1)?;
+        let beta_v1 = v1.mul_by_constant_in_place(&mut cs.ns(|| "beta * v1"), &b1)?;
+
+        v0.add_in_place(&mut cs.ns(|| "c0"), beta_v1)?;
+        let c0 = v0;
+
+        let mut a0b1 = a0.mul_by_constant(&mut cs.ns(|| "a0b1"), &b1)?;
+        let a1b0 = a1.mul_by_constant(&mut cs.ns(|| "a1b0"), &b0)?;
+        a0b1.add_in_place(&mut cs.ns(|| "c1"), &a1b0)?;
+        let c1 = a0b1;
         Ok(Self::new(c0, c1))
     }
 
@@ -466,87 +564,8 @@ where
         })
     }
 
-    #[inline]
-    fn add_constant<CS: ConstraintSystem<ConstraintF>>(
-        &self,
-        mut cs: CS,
-        other: &Fp12<P>,
-    ) -> Result<Self, SynthesisError> {
-        let c0 = self.c0.add_constant(cs.ns(|| "c0"), &other.c0)?;
-        let c1 = self.c1.add_constant(cs.ns(|| "c1"), &other.c1)?;
-
-        Ok(Self::new(c0, c1))
-    }
-
-    #[inline]
-    fn add_constant_in_place<CS: ConstraintSystem<ConstraintF>>(
-        &mut self,
-        mut cs: CS,
-        other: &Fp12<P>,
-    ) -> Result<&mut Self, SynthesisError> {
-        self.c0.add_constant_in_place(cs.ns(|| "c0"), &other.c0)?;
-        self.c1.add_constant_in_place(cs.ns(|| "c1"), &other.c1)?;
-        Ok(self)
-    }
-
-    fn mul_by_constant<CS: ConstraintSystem<ConstraintF>>(
-        &self,
-        mut cs: CS,
-        other: &Fp12<P>,
-    ) -> Result<Self, SynthesisError> {
-        // Karatsuba multiplication (see mul above).
-        // Doesn't need any constraints; returns linear combinations of
-        // `self`'s variables.
-        //
-        // (The operations below are guaranteed to return linear combinations)
-        let (a0, a1) = (&self.c0, &self.c1);
-        let (b0, b1) = (other.c0, other.c1);
-        let mut v0 = a0.mul_by_constant(&mut cs.ns(|| "v0"), &b0)?;
-        let mut v1 = Self::mul_fp6_by_nonresidue(&mut cs.ns(|| "v1"), a1)?;
-        let beta_v1 = v1.mul_by_constant_in_place(&mut cs.ns(|| "beta * v1"), &b1)?;
-
-        v0.add_in_place(&mut cs.ns(|| "c0"), beta_v1)?;
-        let c0 = v0;
-
-        let mut a0b1 = a0.mul_by_constant(&mut cs.ns(|| "a0b1"), &b1)?;
-        let a1b0 = a1.mul_by_constant(&mut cs.ns(|| "a1b0"), &b0)?;
-        a0b1.add_in_place(&mut cs.ns(|| "c1"), &a1b0)?;
-        let c1 = a0b1;
-        Ok(Self::new(c0, c1))
-    }
-
-    fn frobenius_map<CS: ConstraintSystem<ConstraintF>>(
-        &self,
-        cs: CS,
-        power: usize,
-    ) -> Result<Self, SynthesisError> {
-        let mut res = self.clone();
-        res.frobenius_map_in_place(cs, power)?;
-        Ok(res)
-    }
-
-    fn frobenius_map_in_place<CS: ConstraintSystem<ConstraintF>>(
-        &mut self,
-        mut cs: CS,
-        power: usize,
-    ) -> Result<&mut Self, SynthesisError> {
-        self.c0
-            .frobenius_map_in_place(cs.ns(|| "frob_map1"), power)?;
-        self.c1
-            .frobenius_map_in_place(cs.ns(|| "frob_map2"), power)?;
-
-        self.c1
-            .c0
-            .mul_by_constant_in_place(cs.ns(|| "mul1"), &P::FROBENIUS_COEFF_FP12_C1[power % 12])?;
-        self.c1
-            .c1
-            .mul_by_constant_in_place(cs.ns(|| "mul2"), &P::FROBENIUS_COEFF_FP12_C1[power % 12])?;
-        self.c1
-            .c2
-            .mul_by_constant_in_place(cs.ns(|| "mul3"), &P::FROBENIUS_COEFF_FP12_C1[power % 12])?;
-        Ok(self)
-    }
-
+    // now that the patched code does not save any constraints:
+    // why not replace Karatsuba code by simple call to mul_equals?
     fn inverse<CS: ConstraintSystem<ConstraintF>>(
         &self,
         mut cs: CS,
@@ -610,10 +629,10 @@ where
         // Devegili, OhEigeartaigh, Scott, Dahab
         let mul_cs = &mut cs.ns(|| "mul");
 
-        // Compute v1
+        // Constraint 1
         let v1 = self.c1.mul(mul_cs.ns(|| "v1"), &other.c1)?;
 
-        // Perform second check
+        // Constraint 2
         let non_residue_times_v1 = Self::mul_fp6_by_nonresidue(mul_cs.ns(|| "nr * v1"), &v1)?;
         let rhs = result
             .c0
@@ -621,7 +640,7 @@ where
         self.c0
             .mul_equals(mul_cs.ns(|| "second check"), &other.c0, &rhs)?;
 
-        // Last check
+        // Constraint 3
         let a0_plus_a1 = self.c0.add(mul_cs.ns(|| "a0 + a1"), &self.c1)?;
         let b0_plus_b1 = other.c0.add(mul_cs.ns(|| "b0 + b1"), &other.c1)?;
         let one_minus_non_residue_v1 =
@@ -641,6 +660,38 @@ where
         Ok(())
     }
 
+    fn frobenius_map<CS: ConstraintSystem<ConstraintF>>(
+        &self,
+        cs: CS,
+        power: usize,
+    ) -> Result<Self, SynthesisError> {
+        let mut res = self.clone();
+        res.frobenius_map_in_place(cs, power)?;
+        Ok(res)
+    }
+
+    fn frobenius_map_in_place<CS: ConstraintSystem<ConstraintF>>(
+        &mut self,
+        mut cs: CS,
+        power: usize,
+    ) -> Result<&mut Self, SynthesisError> {
+        self.c0
+            .frobenius_map_in_place(cs.ns(|| "frob_map1"), power)?;
+        self.c1
+            .frobenius_map_in_place(cs.ns(|| "frob_map2"), power)?;
+
+        self.c1
+            .c0
+            .mul_by_constant_in_place(cs.ns(|| "mul1"), &P::FROBENIUS_COEFF_FP12_C1[power % 12])?;
+        self.c1
+            .c1
+            .mul_by_constant_in_place(cs.ns(|| "mul2"), &P::FROBENIUS_COEFF_FP12_C1[power % 12])?;
+        self.c1
+            .c2
+            .mul_by_constant_in_place(cs.ns(|| "mul3"), &P::FROBENIUS_COEFF_FP12_C1[power % 12])?;
+        Ok(self)
+    }
+
     fn cost_of_mul() -> usize {
         3 * Fp6Gadget::<P, ConstraintF>::cost_of_mul()
     }
@@ -654,6 +705,102 @@ where
             + 2 * Fp6Gadget::<P, ConstraintF>::cost_of_mul_equals()
     }
 }
+
+/*
+Alloc-, Clone and ConstantGadget for the Fp12Gadget
+*/
+
+impl<P, ConstraintF: PrimeField + SquareRootField> AllocGadget<Fp12<P>, ConstraintF> for Fp12Gadget<P, ConstraintF>
+    where
+        P: Fp12Parameters,
+        <P::Fp6Params as Fp6Parameters>::Fp2Params: Fp2Parameters<Fp = ConstraintF>,
+{
+    #[inline]
+    fn alloc<F, T, CS: ConstraintSystem<ConstraintF>>(
+        mut cs: CS,
+        value_gen: F,
+    ) -> Result<Self, SynthesisError>
+        where
+            F: FnOnce() -> Result<T, SynthesisError>,
+            T: Borrow<Fp12<P>>,
+    {
+        let (c0, c1) = match value_gen() {
+            Ok(fe) => {
+                let fe = *fe.borrow();
+                (Ok(fe.c0), Ok(fe.c1))
+            },
+            Err(_) => (
+                Err(SynthesisError::AssignmentMissing),
+                Err(SynthesisError::AssignmentMissing),
+            ),
+        };
+
+        let c0 = Fp6Gadget::<P, ConstraintF>::alloc(&mut cs.ns(|| "c0"), || c0)?;
+        let c1 = Fp6Gadget::<P, ConstraintF>::alloc(&mut cs.ns(|| "c1"), || c1)?;
+        Ok(Self::new(c0, c1))
+    }
+
+    #[inline]
+    fn alloc_input<F, T, CS: ConstraintSystem<ConstraintF>>(
+        mut cs: CS,
+        value_gen: F,
+    ) -> Result<Self, SynthesisError>
+        where
+            F: FnOnce() -> Result<T, SynthesisError>,
+            T: Borrow<Fp12<P>>,
+    {
+        let (c0, c1) = match value_gen() {
+            Ok(fe) => {
+                let fe = *fe.borrow();
+                (Ok(fe.c0), Ok(fe.c1))
+            },
+            Err(_) => (
+                Err(SynthesisError::AssignmentMissing),
+                Err(SynthesisError::AssignmentMissing),
+            ),
+        };
+
+        let c0 = Fp6Gadget::<P, ConstraintF>::alloc_input(&mut cs.ns(|| "c0"), || c0)?;
+        let c1 = Fp6Gadget::<P, ConstraintF>::alloc_input(&mut cs.ns(|| "c1"), || c1)?;
+        Ok(Self::new(c0, c1))
+    }
+}
+
+impl<P, ConstraintF: PrimeField + SquareRootField> Clone for Fp12Gadget<P, ConstraintF>
+    where
+        P: Fp12Parameters,
+        <P::Fp6Params as Fp6Parameters>::Fp2Params: Fp2Parameters<Fp = ConstraintF>,
+{
+    fn clone(&self) -> Self {
+        Self::new(self.c0.clone(), self.c1.clone())
+    }
+}
+
+impl<P, ConstraintF: PrimeField + SquareRootField> ConstantGadget<Fp12<P>, ConstraintF> for Fp12Gadget<P, ConstraintF>
+    where
+        P: Fp12Parameters,
+        <P::Fp6Params as Fp6Parameters>::Fp2Params: Fp2Parameters<Fp = ConstraintF>,
+{
+    #[inline]
+    fn from_value<CS: ConstraintSystem<ConstraintF>>(
+        mut cs: CS,
+        value: &Fp12<P>,
+    ) -> Self
+    {
+        let c0 = Fp6Gadget::<P, ConstraintF>::from_value(&mut cs.ns(|| "c0"), &value.c0);
+        let c1 = Fp6Gadget::<P, ConstraintF>::from_value(&mut cs.ns(|| "c1"), &value.c1);
+        Self::new(c0, c1)
+    }
+
+    #[inline]
+    fn get_constant(&self) -> Fp12<P> {
+        self.get_value().unwrap()
+    }
+}
+
+/*
+relational and conditional gadgets (incl. lookup tables) for Fp12Gadgets
+*/
 
 impl<P, ConstraintF: PrimeField + SquareRootField> PartialEq for Fp12Gadget<P, ConstraintF>
 where
@@ -703,6 +850,10 @@ where
     }
 }
 
+/* enforces that all two components of two Fp12Gadgets are not equal.
+Note: This is not the canonical notion of inequality for field elements, we need to check
+whether the implementation depicts the need of futher application
+*/
 impl<P, ConstraintF: PrimeField + SquareRootField> NEqGadget<ConstraintF> for Fp12Gadget<P, ConstraintF>
 where
     P: Fp12Parameters,
@@ -723,6 +874,128 @@ where
         2 * <Fp6Gadget<P, ConstraintF> as NEqGadget<ConstraintF>>::cost()
     }
 }
+
+impl<P, ConstraintF: PrimeField + SquareRootField> CondSelectGadget<ConstraintF> for Fp12Gadget<P, ConstraintF>
+    where
+        P: Fp12Parameters,
+        <P::Fp6Params as Fp6Parameters>::Fp2Params: Fp2Parameters<Fp = ConstraintF>,
+{
+    #[inline]
+    fn conditionally_select<CS: ConstraintSystem<ConstraintF>>(
+        mut cs: CS,
+        cond: &Boolean,
+        first: &Self,
+        second: &Self,
+    ) -> Result<Self, SynthesisError> {
+        let c0 = Fp6Gadget::<P, ConstraintF>::conditionally_select(
+            &mut cs.ns(|| "c0"),
+            cond,
+            &first.c0,
+            &second.c0,
+        )?;
+        let c1 = Fp6Gadget::<P, ConstraintF>::conditionally_select(
+            &mut cs.ns(|| "c1"),
+            cond,
+            &first.c1,
+            &second.c1,
+        )?;
+
+        Ok(Self::new(c0, c1))
+    }
+
+    fn cost() -> usize {
+        2 * <Fp6Gadget<P, ConstraintF> as CondSelectGadget<ConstraintF>>::cost()
+    }
+}
+
+impl<P, ConstraintF: PrimeField + SquareRootField> TwoBitLookupGadget<ConstraintF> for Fp12Gadget<P, ConstraintF>
+    where
+        P: Fp12Parameters,
+        <P::Fp6Params as Fp6Parameters>::Fp2Params: Fp2Parameters<Fp = ConstraintF>,
+{
+    type TableConstant = Fp12<P>;
+    /* Two bit lookup circuit, chooses c[i], i=0,..,3, according to i = b[1]*2 + b[0] given
+    by two Booleans b[0], b[1].
+    */
+    fn two_bit_lookup<CS: ConstraintSystem<ConstraintF>>(
+        mut cs: CS,
+        b: &[Boolean],
+        c: &[Self::TableConstant],
+    ) -> Result<Self, SynthesisError> {
+        let c0s = c.iter().map(|f| f.c0).collect::<Vec<_>>();
+        let c1s = c.iter().map(|f| f.c1).collect::<Vec<_>>();
+        let c0 = Fp6Gadget::<P, ConstraintF>::two_bit_lookup(cs.ns(|| "Lookup c0"), b, &c0s)?;
+        let c1 = Fp6Gadget::<P, ConstraintF>::two_bit_lookup(cs.ns(|| "Lookup c1"), b, &c1s)?;
+        Ok(Self::new(c0, c1))
+    }
+
+    /* low level version of two bit lookup table, outsources the quadratic term b0 * b1 in
+     (c0-c1-c2+c3) * b0 * b1 = result - [c0 + (c1-c0)*b0 + (c2-c0)*b1]
+    to an input Boolean 'precomp'.
+    */
+    fn two_bit_lookup_lc<CS: ConstraintSystem<ConstraintF>>(
+        mut cs: CS,
+        precomp: &Boolean,
+        b: &[Boolean],
+        c: &[Self::TableConstant])
+        -> Result<Self, SynthesisError> {
+        let c0s = c.iter().map(|f| f.c0).collect::<Vec<_>>();
+        let c1s = c.iter().map(|f| f.c1).collect::<Vec<_>>();
+        let c0 = Fp6Gadget::<P, ConstraintF>::two_bit_lookup_lc(cs.ns(|| "Lookup c0"), precomp, b, &c0s)?;
+        let c1 = Fp6Gadget::<P, ConstraintF>::two_bit_lookup_lc(cs.ns(|| "Lookup c1"), precomp, b, &c1s)?;
+        Ok(Self::new(c0, c1))
+    }
+
+    fn cost() -> usize {
+        2 * <Fp6Gadget<P, ConstraintF> as TwoBitLookupGadget<ConstraintF>>::cost()
+    }
+}
+
+impl<P, ConstraintF: PrimeField + SquareRootField> ThreeBitCondNegLookupGadget<ConstraintF>
+for Fp12Gadget<P, ConstraintF>
+    where
+        P: Fp12Parameters,
+        <P::Fp6Params as Fp6Parameters>::Fp2Params: Fp2Parameters<Fp = ConstraintF>,
+{
+    type TableConstant = Fp12<P>;
+
+    /* Three bit look up circuit combining a two bit table and conditional negation.
+    Outputs
+        c = (-1)^b[2] * c[i] = (-1)^b[2] * c[b[1]*2 + b[0]]
+    according to the bits b[0],b[1],b[2].
+    As two_bit_lookup_lc, the quadratic term b[0]*[1] is outsourced to the input Boolean b0b1.
+    */
+    fn three_bit_cond_neg_lookup<CS: ConstraintSystem<ConstraintF>>(
+        mut cs: CS,
+        b: &[Boolean],
+        b0b1: &Boolean,
+        c: &[Self::TableConstant],
+    ) -> Result<Self, SynthesisError> {
+        let c0s = c.iter().map(|f| f.c0).collect::<Vec<_>>();
+        let c1s = c.iter().map(|f| f.c1).collect::<Vec<_>>();
+        let c0 = Fp6Gadget::<P, ConstraintF>::three_bit_cond_neg_lookup(
+            cs.ns(|| "Lookup c0"),
+            b,
+            b0b1,
+            &c0s,
+        )?;
+        let c1 = Fp6Gadget::<P, ConstraintF>::three_bit_cond_neg_lookup(
+            cs.ns(|| "Lookup c1"),
+            b,
+            b0b1,
+            &c1s,
+        )?;
+        Ok(Self::new(c0, c1))
+    }
+
+    fn cost() -> usize {
+        2 * <Fp6Gadget<P, ConstraintF> as ThreeBitCondNegLookupGadget<ConstraintF>>::cost()
+    }
+}
+
+/*
+Packing and unpacking gadgets for Fp6Gadget
+*/
 
 impl<P, ConstraintF: PrimeField + SquareRootField> ToBitsGadget<ConstraintF> for Fp12Gadget<P, ConstraintF>
 where
@@ -776,195 +1049,3 @@ where
     }
 }
 
-impl<P, ConstraintF: PrimeField + SquareRootField> Clone for Fp12Gadget<P, ConstraintF>
-where
-    P: Fp12Parameters,
-    <P::Fp6Params as Fp6Parameters>::Fp2Params: Fp2Parameters<Fp = ConstraintF>,
-{
-    fn clone(&self) -> Self {
-        Self::new(self.c0.clone(), self.c1.clone())
-    }
-}
-
-impl<P, ConstraintF: PrimeField + SquareRootField> CondSelectGadget<ConstraintF> for Fp12Gadget<P, ConstraintF>
-where
-    P: Fp12Parameters,
-    <P::Fp6Params as Fp6Parameters>::Fp2Params: Fp2Parameters<Fp = ConstraintF>,
-{
-    #[inline]
-    fn conditionally_select<CS: ConstraintSystem<ConstraintF>>(
-        mut cs: CS,
-        cond: &Boolean,
-        first: &Self,
-        second: &Self,
-    ) -> Result<Self, SynthesisError> {
-        let c0 = Fp6Gadget::<P, ConstraintF>::conditionally_select(
-            &mut cs.ns(|| "c0"),
-            cond,
-            &first.c0,
-            &second.c0,
-        )?;
-        let c1 = Fp6Gadget::<P, ConstraintF>::conditionally_select(
-            &mut cs.ns(|| "c1"),
-            cond,
-            &first.c1,
-            &second.c1,
-        )?;
-
-        Ok(Self::new(c0, c1))
-    }
-
-    fn cost() -> usize {
-        2 * <Fp6Gadget<P, ConstraintF> as CondSelectGadget<ConstraintF>>::cost()
-    }
-}
-
-impl<P, ConstraintF: PrimeField + SquareRootField> TwoBitLookupGadget<ConstraintF> for Fp12Gadget<P, ConstraintF>
-where
-    P: Fp12Parameters,
-    <P::Fp6Params as Fp6Parameters>::Fp2Params: Fp2Parameters<Fp = ConstraintF>,
-{
-    type TableConstant = Fp12<P>;
-    fn two_bit_lookup<CS: ConstraintSystem<ConstraintF>>(
-        mut cs: CS,
-        b: &[Boolean],
-        c: &[Self::TableConstant],
-    ) -> Result<Self, SynthesisError> {
-        let c0s = c.iter().map(|f| f.c0).collect::<Vec<_>>();
-        let c1s = c.iter().map(|f| f.c1).collect::<Vec<_>>();
-        let c0 = Fp6Gadget::<P, ConstraintF>::two_bit_lookup(cs.ns(|| "Lookup c0"), b, &c0s)?;
-        let c1 = Fp6Gadget::<P, ConstraintF>::two_bit_lookup(cs.ns(|| "Lookup c1"), b, &c1s)?;
-        Ok(Self::new(c0, c1))
-    }
-
-    fn two_bit_lookup_lc<CS: ConstraintSystem<ConstraintF>>(
-        mut cs: CS,
-        precomp: &Boolean,
-        b: &[Boolean],
-        c: &[Self::TableConstant])
-        -> Result<Self, SynthesisError> {
-        let c0s = c.iter().map(|f| f.c0).collect::<Vec<_>>();
-        let c1s = c.iter().map(|f| f.c1).collect::<Vec<_>>();
-        let c0 = Fp6Gadget::<P, ConstraintF>::two_bit_lookup_lc(cs.ns(|| "Lookup c0"), precomp, b, &c0s)?;
-        let c1 = Fp6Gadget::<P, ConstraintF>::two_bit_lookup_lc(cs.ns(|| "Lookup c1"), precomp, b, &c1s)?;
-        Ok(Self::new(c0, c1))
-    }
-
-    fn cost() -> usize {
-        2 * <Fp6Gadget<P, ConstraintF> as TwoBitLookupGadget<ConstraintF>>::cost()
-    }
-}
-
-impl<P, ConstraintF: PrimeField + SquareRootField> ThreeBitCondNegLookupGadget<ConstraintF>
-    for Fp12Gadget<P, ConstraintF>
-where
-    P: Fp12Parameters,
-    <P::Fp6Params as Fp6Parameters>::Fp2Params: Fp2Parameters<Fp = ConstraintF>,
-{
-    type TableConstant = Fp12<P>;
-
-    fn three_bit_cond_neg_lookup<CS: ConstraintSystem<ConstraintF>>(
-        mut cs: CS,
-        b: &[Boolean],
-        b0b1: &Boolean,
-        c: &[Self::TableConstant],
-    ) -> Result<Self, SynthesisError> {
-        let c0s = c.iter().map(|f| f.c0).collect::<Vec<_>>();
-        let c1s = c.iter().map(|f| f.c1).collect::<Vec<_>>();
-        let c0 = Fp6Gadget::<P, ConstraintF>::three_bit_cond_neg_lookup(
-            cs.ns(|| "Lookup c0"),
-            b,
-            b0b1,
-            &c0s,
-        )?;
-        let c1 = Fp6Gadget::<P, ConstraintF>::three_bit_cond_neg_lookup(
-            cs.ns(|| "Lookup c1"),
-            b,
-            b0b1,
-            &c1s,
-        )?;
-        Ok(Self::new(c0, c1))
-    }
-
-    fn cost() -> usize {
-        2 * <Fp6Gadget<P, ConstraintF> as ThreeBitCondNegLookupGadget<ConstraintF>>::cost()
-    }
-}
-
-impl<P, ConstraintF: PrimeField + SquareRootField> AllocGadget<Fp12<P>, ConstraintF> for Fp12Gadget<P, ConstraintF>
-where
-    P: Fp12Parameters,
-    <P::Fp6Params as Fp6Parameters>::Fp2Params: Fp2Parameters<Fp = ConstraintF>,
-{
-    #[inline]
-    fn alloc<F, T, CS: ConstraintSystem<ConstraintF>>(
-        mut cs: CS,
-        value_gen: F,
-    ) -> Result<Self, SynthesisError>
-    where
-        F: FnOnce() -> Result<T, SynthesisError>,
-        T: Borrow<Fp12<P>>,
-    {
-        let (c0, c1) = match value_gen() {
-            Ok(fe) => {
-                let fe = *fe.borrow();
-                (Ok(fe.c0), Ok(fe.c1))
-            },
-            Err(_) => (
-                Err(SynthesisError::AssignmentMissing),
-                Err(SynthesisError::AssignmentMissing),
-            ),
-        };
-
-        let c0 = Fp6Gadget::<P, ConstraintF>::alloc(&mut cs.ns(|| "c0"), || c0)?;
-        let c1 = Fp6Gadget::<P, ConstraintF>::alloc(&mut cs.ns(|| "c1"), || c1)?;
-        Ok(Self::new(c0, c1))
-    }
-
-    #[inline]
-    fn alloc_input<F, T, CS: ConstraintSystem<ConstraintF>>(
-        mut cs: CS,
-        value_gen: F,
-    ) -> Result<Self, SynthesisError>
-    where
-        F: FnOnce() -> Result<T, SynthesisError>,
-        T: Borrow<Fp12<P>>,
-    {
-        let (c0, c1) = match value_gen() {
-            Ok(fe) => {
-                let fe = *fe.borrow();
-                (Ok(fe.c0), Ok(fe.c1))
-            },
-            Err(_) => (
-                Err(SynthesisError::AssignmentMissing),
-                Err(SynthesisError::AssignmentMissing),
-            ),
-        };
-
-        let c0 = Fp6Gadget::<P, ConstraintF>::alloc_input(&mut cs.ns(|| "c0"), || c0)?;
-        let c1 = Fp6Gadget::<P, ConstraintF>::alloc_input(&mut cs.ns(|| "c1"), || c1)?;
-        Ok(Self::new(c0, c1))
-    }
-}
-
-impl<P, ConstraintF: PrimeField + SquareRootField> ConstantGadget<Fp12<P>, ConstraintF> for Fp12Gadget<P, ConstraintF>
-    where
-        P: Fp12Parameters,
-        <P::Fp6Params as Fp6Parameters>::Fp2Params: Fp2Parameters<Fp = ConstraintF>,
-{
-    #[inline]
-    fn from_value<CS: ConstraintSystem<ConstraintF>>(
-        mut cs: CS,
-        value: &Fp12<P>,
-    ) -> Self
-    {
-        let c0 = Fp6Gadget::<P, ConstraintF>::from_value(&mut cs.ns(|| "c0"), &value.c0);
-        let c1 = Fp6Gadget::<P, ConstraintF>::from_value(&mut cs.ns(|| "c1"), &value.c1);
-        Self::new(c0, c1)
-    }
-
-    #[inline]
-    fn get_constant(&self) -> Fp12<P> {
-        self.get_value().unwrap()
-    }
-}
