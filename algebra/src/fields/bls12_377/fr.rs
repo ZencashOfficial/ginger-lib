@@ -1,3 +1,6 @@
+//! The field of exponents for the BLS12-377, a 253 bit prime field with duadicity
+//! 47.
+
 use crate::{
     biginteger::BigInteger256 as BigInteger,
     fields::{Fp256, Fp256Parameters, FpParameters},
@@ -12,7 +15,9 @@ impl Fp256Parameters for FrParameters {}
 impl FpParameters for FrParameters {
     type BigInt = BigInteger;
 
-    // MODULUS = 8444461749428370424248824938781546531375899335154063827935233455917409239041
+    /// MODULUS =
+    /// 8444461749428370424248824938781546531375899335154063827935233455917409\
+    /// 239041
     const MODULUS: BigInteger = BigInteger([
         725501752471715841u64,
         6461107452199829505u64,
@@ -26,6 +31,9 @@ impl FpParameters for FrParameters {
 
     const REPR_SHAVE_BITS: u32 = 3;
 
+    /// Montgomery constant =
+    /// 6014086494747379908336260804527802945383293308637734276299549080986809\
+    /// 532403
     const R: BigInteger = BigInteger([
         9015221291577245683u64,
         8239323489949974514u64,
@@ -33,6 +41,9 @@ impl FpParameters for FrParameters {
         958099254763297437u64,
     ]);
 
+    /// Montgomery constant squared =
+    /// 5085959413117794721136926001468180272786333304992140717377457929293367\
+    /// 55579
     const R2: BigInteger = BigInteger([
         2726216793283724667u64,
         14712177743343147295u64,
@@ -42,7 +53,7 @@ impl FpParameters for FrParameters {
 
     const INV: u64 = 725501752471715839u64;
 
-    // GENERATOR = 11
+    /// GENERATOR = 11
     const GENERATOR: BigInteger = BigInteger([
         1855201571499933546u64,
         8511318076631809892u64,
@@ -52,6 +63,9 @@ impl FpParameters for FrParameters {
 
     const TWO_ADICITY: u32 = 47;
 
+    /// A 2^47-th root of unity =
+    /// 6924886788847882060123066508223519077232160750698452411071850219367055\
+    /// 984476
     const ROOT_OF_UNITY: BigInteger = BigInteger([
         0x3c3d3ca739381fb2,
         0x9a14cda3ec99772b,
@@ -60,7 +74,8 @@ impl FpParameters for FrParameters {
     ]);
 
     /// (r - 1)/2 =
-    /// 4222230874714185212124412469390773265687949667577031913967616727958704619520
+    /// 4222230874714185212124412469390773265687949667577031913967616727958704\
+    /// 619520
     const MODULUS_MINUS_ONE_DIV_TWO: BigInteger = BigInteger([
         0x8508c00000000000,
         0xacd53b7f68000000,

@@ -1,3 +1,5 @@
+//! Montgomery arithemtics for BigInteger768.
+
 use std::{
     cmp::{Ord, Ordering, PartialOrd},
     fmt::{Display, Formatter, Result as FmtResult},

@@ -1,3 +1,5 @@
+//! Quadratic extension of prime fields Fp.
+
 use crate::{UniformRand, ToBits, FromBits, Error};
 use rand::{Rng, distributions::{Standard, Distribution}};
 use std::{
@@ -11,33 +13,45 @@ use crate::{
     fields::{Field, LegendreSymbol, PrimeField, SquareRootField, FpParameters},
 };
 
-/// Model for quadratic extension field of prime field F=Fp
-///     F2 = F[X]/(X^2-alpha),
-/// with alpha being a (quadratic) "non-residue".
+/// Model for quadratic extension of a prime field.
+///
+/// Consider the quadratic extension of F = Fp as
+///
+/// F2 = F[X]/(X^2-alpha),
+///
+/// where alpha is a (quadratic) "non-residue", so that X^2-alpha is irreducible over F.
 /// We implement the inversion and Karatsuba multiplication according to
-/// Mrabet, Joye, Guide to Pairing-based Cryptography
-/// https://dl.acm.org/doi/book/10.5555/3092800
+/// [Mrabet, Joye](https://dl.acm.org/doi/book/10.5555/3092800)
 /// and the square root algorithm from
-/// Adj, et al., Square root computation over even extension fields,
-/// https://eprint.iacr.org/2012/685.pdf
+/// [Adj, et al.](https://eprint.iacr.org/2012/685.pdf).
 
 pub trait Fp2Parameters: 'static + Send + Sync {
     type Fp: PrimeField + SquareRootField;
 
-    //alpha
+    /// The extension field element alpha as above.
     const NONRESIDUE: Self::Fp;
-    //quadratic nonresidue for square root algorithm
+    /// Quadratic nonresidue for square root algorithm.
     const QUADRATIC_NONRESIDUE: (Self::Fp, Self::Fp);
-    //coefficients of the powers of the Frobenius automorphism as linear map over F
-    // (pi^0(X), pi^1(X)) = (C1_0*X, C1_1*X),
+    /// Coefficients (c10,c11) of the powers of the Frobenius map
+    /// applied to X:
+    ///
+    /// pi^k(X) = X^{q^k-1} * X = alpha^{(q^k-1)/2} * X
+    ///     = C1k * X,
+    /// k = 0,1.
     const FROBENIUS_COEFF_FP2_C1: [Self::Fp; 2];
 
+    /// The multiplication function for Fp elements by alpha, used in the
+    /// implementation of the Fp2 arithmetics.
     #[inline(always)]
     fn mul_fp_by_nonresidue(fe: &Self::Fp) -> Self::Fp {
         Self::NONRESIDUE * fe
     }
 }
 
+/// Fp2 elements as vector of Fp elements.
+///
+/// (c0,c1) = c0 + c1*X.
+///
 #[derive(Derivative)]
 #[derivative(
     Default(bound = "P: Fp2Parameters"),
@@ -65,7 +79,7 @@ impl<P: Fp2Parameters> Fp2<P> {
         }
     }
 
-    /// Norm of Fp2 over Fp: Norm(a) = a.x^2 - beta * a.y^2
+    // Norm of Fp2 over Fp: Norm(a) = a.x^2 - beta * a.y^2
     pub fn norm(&self) -> P::Fp {
         let t0 = self.c0.square();
         let mut t1 = self.c1.square();

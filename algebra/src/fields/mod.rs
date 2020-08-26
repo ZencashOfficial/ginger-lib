@@ -1,3 +1,11 @@
+//! Field models for prime fields, towered extensions, and
+//! concrete instantiations for the curves from `algebra::curves`.
+//!
+//! - Montgomery arithmetics for BigInteger256, 320, 384, 768 and 832,
+//! - models of towered extension fields for embedding fields of degree 4,6, and 12,
+//! - all the fields, i.e. base field Fq, exponent field Fr and (towered) extension fields
+//! Fq* for the curves from   `algebra::curves`.
+//!
 use crate::{biginteger::BigInteger, bytes::{FromBytes, ToBytes}, UniformRand, bits::{ToBits, FromBits}, Error, BitSerializationError};
 use std::{
     fmt::{Debug, Display},
@@ -157,7 +165,7 @@ pub trait Field:
     }
 }
 
-/// A trait that defines parameters for a prime field.
+/// Prime field parameters.
 pub trait FpParameters: 'static + Send + Sync + Sized {
     type BigInt: BigInteger;
 
@@ -207,7 +215,7 @@ pub trait FpParameters: 'static + Send + Sync + Sized {
     const MODULUS_MINUS_ONE_DIV_TWO: Self::BigInt;
 }
 
-/// The interface for a prime field.
+/// The interface for prime field arithmetics
 pub trait PrimeField: Field + FromStr {
     type Params: FpParameters<BigInt = Self::BigInt>;
     type BigInt: BigInteger;

@@ -1,3 +1,6 @@
+//! Embedding field of the BLS12-377, a quadratic extension of the intermediate
+//! field Fq6.
+
 use crate::field_new;
 use crate::{
     biginteger::BigInteger384,

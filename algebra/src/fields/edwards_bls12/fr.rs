@@ -1,3 +1,5 @@
+//! Exponent field of the Ed253, a 251 bit prime field with duadicity 1.
+
 use crate::{
     biginteger::BigInteger256 as BigInteger,
     fields::{Fp256, Fp256Parameters, FpParameters},
@@ -11,7 +13,9 @@ impl Fp256Parameters for FrParameters {}
 impl FpParameters for FrParameters {
     type BigInt = BigInteger;
 
-    // MODULUS = 2111115437357092606062206234695386632838870926408408195193685246394721360383
+    /// MODULUS =
+    /// 2111115437357092606062206234695386632838870926408408195193685246394721\
+    /// 360383
     const MODULUS: BigInteger = BigInteger([
         13356249993388743167u64,
         5950279507993463550u64,
@@ -25,6 +29,9 @@ impl FpParameters for FrParameters {
 
     const REPR_SHAVE_BITS: u32 = 5;
 
+    /// Montgomery constant =
+    /// 1791855620033194696211848335137029679970954639586521498998580702598176\
+    /// 179254
     const R: BigInteger = BigInteger([
         16632263305389933622u64,
         10726299895124897348u64,
@@ -32,6 +39,9 @@ impl FpParameters for FrParameters {
         285459069419210737u64,
     ]);
 
+    /// Montgomery constant squared =
+    /// 2026312150908836771773916518145774333168902717269522706311567963734104\
+    /// 462430
     const R2: BigInteger = BigInteger([
         3987543627614508126u64,
         17742427666091596403u64,
@@ -41,7 +51,7 @@ impl FpParameters for FrParameters {
 
     const INV: u64 = 9659935179256617473u64;
 
-    // 5
+    /// GENERATOR = 5
     const GENERATOR: BigInteger = BigInteger([
         11289572479685143826u64,
         11383637369941080925u64,
@@ -51,6 +61,7 @@ impl FpParameters for FrParameters {
 
     const TWO_ADICITY: u32 = 1;
 
+    /// square root of unity = -1
     const ROOT_OF_UNITY: BigInteger = BigInteger([
         15170730761708361161u64,
         13670723686578117817u64,
@@ -58,6 +69,9 @@ impl FpParameters for FrParameters {
         50861023252832611u64,
     ]);
 
+    /// (r-1)/2 =
+    /// 1055557718678546303031103117347693316419435463204204097596842623197360\
+    /// 680191
     const MODULUS_MINUS_ONE_DIV_TWO: BigInteger = BigInteger([
         6678124996694371583u64,
         2975139753996731775u64,
@@ -65,6 +79,7 @@ impl FpParameters for FrParameters {
         168160046336021674u64,
     ]);
 
+    /// not needed, as the same value as (r-1)/2.
     const T: BigInteger = BigInteger([0x0, 0x0, 0x0, 0x0]);
 
     const T_MINUS_ONE_DIV_TWO: BigInteger = BigInteger([0x0, 0x0, 0x0, 0x0]);

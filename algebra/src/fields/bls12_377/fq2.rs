@@ -1,3 +1,5 @@
+//! Quadratic extension of BLS12-377's base field, the base field of its sextic twist.
+
 use crate::{
     field_new,
     biginteger::BigInteger384 as BigInteger,
@@ -10,12 +12,15 @@ use crate::{
 
 pub type Fq2 = Fp2<Fq2Parameters>;
 
+/// Parameters for quadratic extension field
 pub struct Fq2Parameters;
 
 impl Fp2Parameters for Fq2Parameters {
     type Fp = Fq;
 
-    /// NONRESIDUE = -5
+    /// NONRESIDUE = -5 as non-square (and also non-cube) in Fq.
+    /// Its roots are used to build not just the quadratic but also
+    /// further extensions.
     const NONRESIDUE: Fq = field_new!(Fq, BigInteger([
         0xfc0b8000000002fa,
         0x97d39cf6e000018b,
@@ -25,7 +30,7 @@ impl Fp2Parameters for Fq2Parameters {
         0x9974a2c0945ad2,
     ]));
 
-    /// QUADRATIC_NONRESIDUE = U
+    /// QUADRATIC_NONRESIDUE in Fq2.
     const QUADRATIC_NONRESIDUE: (Fq, Fq) = (
         field_new!(Fq, BigInteger([0, 0, 0, 0, 0, 0])),
         field_new!(Fq, BigInteger([
@@ -60,6 +65,7 @@ impl Fp2Parameters for Fq2Parameters {
         ])),
     ];
 
+    /// multiplication by NONRESIDUE=-5 made simple
     #[inline(always)]
     fn mul_fp_by_nonresidue(fe: &Self::Fp) -> Self::Fp {
         let original = fe;

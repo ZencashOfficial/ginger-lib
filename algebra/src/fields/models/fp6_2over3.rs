@@ -1,3 +1,6 @@
+//! Degree 6 extension field of prime fields Fp with p = 1 mod 12 as quadratic extension of Fp3.
+//! Includes pairing embedding field operations.
+
 use rand::{Rng, distributions::{Standard, Distribution}};
 use crate::{UniformRand, ToCompressedBits, FromCompressedBits, ToBits, FromBits, PrimeField, Error, BitSerializationError};
 use std::{
@@ -14,30 +17,50 @@ use crate::{
 };
 
 
-/// Model for quadratic extension field F6 as towered extension
+/// Model for degree 6 embedding field of Fp as towered extension
 ///
-//     F6 = F2[Y]/(Y^2-X),
-//     F3 = Fp[X]/(X^3-alpha),
+///     F6 = F3[Y]/(Y^2-X),
+///     F3 = Fp[X]/(X^3-alpha),
 ///
-/// using a "non-residue" alpha mod p such that (X^6-alpha) is irreducible over Fp.
-/// Its arithmetics includes pairing-relevant operations such as exponentiation and
-/// squaring on the r-th unit roots of F6 (cyclotomic exp. and squ.).
+/// using a "non-residue" alpha which is neither a square nor a cube mod p
+/// (see [KM 2005](https://link.springer.com/chapter/10.1007/11586821_2)
+/// or [BS 2009](https://eprint.iacr.org/2009/556.pdf)).
+///
+/// We implement inversion according to
+/// [Beuchat, et al. 2010](https://eprint.iacr.org/2010/354.pdf),
+/// multiplication and squaring according to
+/// [Devegili, et al. 2006](https://eprint.iacr.org/2006/471.pdf), and
+/// supply cyclotomic operations as well as an optimized multiplication for
+/// a special operand setting as used by embedding degree 6 pairings.
 
 pub trait Fp6Parameters: 'static + Send + Sync {
     type Fp3Params: Fp3Parameters;
 
-    //alpha
+    /// This const is not used in the implementation of the field arithmetics,
+    /// which uses the fixed element X = (0,1,0) from Fp3.
     const NONRESIDUE: Fp3<Self::Fp3Params>;
 
-    /// Coefficients for the Frobenius automorphism.
+    /// Coefficients of the powers of the Frobenius map applied to Y:
+    ///
+    /// pi^k(Y) = Y^(p^k-1) * Y = alpha^((p^k-1)/6) * Y
+    ///     = C1k * Y,
+    ///
+    /// k = 0,1,..,5.
     const FROBENIUS_COEFF_FP6_C1: [<Self::Fp3Params as Fp3Parameters>::Fp; 6];
 
+    /// Default implementation for multiplication of Fp3 elements by `NONRESIDUE`.
+    /// However, this function is not used in our implmenentation.
     #[inline(always)]
     fn mul_fp3_by_nonresidue(fe: &Fp3<Self::Fp3Params>) -> Fp3<Self::Fp3Params> {
         Self::NONRESIDUE * fe
     }
 }
 
+/// Fp6 elements as vector of Fp3 elements.
+///
+/// (c0,c1) = c0 + c1* Y
+///
+/// with Y as above.
 #[derive(Derivative)]
 #[derivative(
     Default(bound = "P: Fp6Parameters"),
@@ -65,7 +88,8 @@ impl<P: Fp6Parameters> Fp6<P> {
         }
     }
 
-    /// Multiply by quadratic nonresidue v.
+    /// These lines of code show that Fp6Params::NONRESIDUE is assumed to be
+    /// X = (0,1,0).
     pub fn mul_by_nonresidue(value: &Fp3<P::Fp3Params>) -> Fp3<P::Fp3Params> {
         let mut res = *value;
         res.c0 = value.c2;

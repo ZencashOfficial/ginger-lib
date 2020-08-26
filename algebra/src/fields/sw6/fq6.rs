@@ -1,3 +1,10 @@
+//! Embedding field for the sw6, a degree 6 extension of Fq.
+//!
+//! Constructed as degree 2 extension of the base field Fq3 of the quadratic
+//! twist.
+//! Contrary to the definition of `NONRESIDUE` below, this extension is achieved
+//! by adding a square root Y of X in Fq3, see the comments in the Fp6_2over3 model.
+
 use crate::field_new;
 use crate::{
     biginteger::BigInteger832 as BigInteger,
