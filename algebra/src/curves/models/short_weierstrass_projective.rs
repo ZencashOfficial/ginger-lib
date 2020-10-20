@@ -131,7 +131,6 @@ impl<P: Parameters> GroupAffine<P> {
         self.mul_bits(BitIterator::new(P::ScalarField::characteristic()))
             .is_zero()
     }
-
 }
 
 impl<P: Parameters> AffineCurve for GroupAffine<P> {
@@ -165,62 +164,84 @@ impl<P: Parameters> AffineCurve for GroupAffine<P> {
         self.is_on_curve() && self.is_in_correct_subgroup_assuming_on_curve()
     }
 
-    fn add_points(to_add: &mut [Vec<Self>]) {
-        let zero = P::BaseField::zero();
-        let one = P::BaseField::one();
-        let length = to_add.iter().map(|l| l.len()).fold(0, |x, y| x + y);
-        let mut denoms = vec![zero; length / 2];
+    // this function adds, for each vector of 'vectors', its elements
+    // together, using Affine point arithmetic, reducing to the vector of sums
+    fn add_points (vectors: &mut [Vec<Self>]) {
 
-        while to_add.iter().position(|x| x.len() > 1) != None {
+        // length is the sum of the lengths of each of the vectors in the vector of vectors
+        let length = vectors.iter().map(|l| l.len()).fold(0, |x, y| x + y);
+
+        // denoms is a vector initialized to the field element zero with length length / 2
+        // they are used to store the denoms
+        let mut denoms = vec![P::BaseField::zero(); length / 2];
+
+        // as long as there is a vector with length at least 2 go into the while
+        while vectors.iter().position(|x| x.len() > 1) != None {
             let mut dx: usize = 0;
-            for p in to_add.iter_mut(){
-                if p.len() < 2 { continue }
-                let len = if p.len() % 2 == 0 { p.len() } else { p.len() - 1 };
-                for i in (0..len).step_by(2){
-                    denoms[dx] = {
-                        if p[i].x == p[i + 1].x {
-                            if p[i + 1].y == zero { one } else { p[i + 1].y.double() }
+
+            // p is each of the bucket
+            for p in vectors.iter_mut() {
+                if p.len() < 2 {continue}
+                // if len is 1, there is no need to add
+
+                let len = if p.len()%2 == 0 { p.len() } else { p.len() - 1 };
+                // len is the length if it is divisible by two otherwise it is length -1
+
+                for i in (0..len).step_by(2) {
+                    // dx is the index of denoms which is incremented by 1
+                    // denoms will pack the denoms for consecutive two points in the bucket
+                    // the loop goes by step of 2
+                    denoms[dx] =
+                        if p[i].x == p[i+1].x {
+                            // This is a point doubling
+                            if p[i+1].y == P::BaseField::zero() {
+                                // In this case the result is the point at infiniy
+                                // In order to ignore this, we introduce 1 whose inverse is also 1
+                                P::BaseField::one()
+                            } else {
+                                // The denom is a double of y
+                                p[i+1].y.double()
+                            }
                         } else {
-                            p[i].x - &p[i + 1].x
-                        }
-                    };
+                            // This is a point addition
+                            p[i].x - &p[i+1].x
+                        };
                     dx += 1;
                 }
             }
 
             denoms.truncate(dx);
-            crate::fields::batch_inversion(&mut denoms);
+            crate::fields::batch_inversion::<P::BaseField>(&mut denoms);
             dx = 0;
 
-            for p in to_add.iter_mut() {
+            for p in vectors.iter_mut() {
                 if p.len() < 2 { continue }
-                let len = if p.len() % 2 == 0 { p.len() } else { p.len() - 1 };
+                let len = if p.len()%2 == 0 { p.len() } else { p.len()-1 };
 
                 for i in (0..len).step_by(2) {
                     let j = i/2;
-                    if p[i+1].is_zero()
-                    {
+                    if p[i+1].is_zero() {
+                        // point p+1 is zero, so the addition is p_i
                         p[j] = p[i];
                     }
-                    else if p[i].is_zero()
-                    {
+                    else if p[i].is_zero() {
+                        // point p is zero, so the addition is p_(i+1)
                         p[j] = p[i+1];
                     }
-                    else if p[i+1].x == p[i].x && (p[i+1].y != p[i].y || p[i+1].y.is_zero())
-                    {
+                    else if p[i+1].x == p[i].x && (p[i+1].y != p[i].y || p[i+1].y == P::BaseField::zero()) {
+                        // we're adding opposite points
                         p[j] = Self::zero();
                     }
-                    else if p[i+1].x == p[i].x && p[i+1].y == p[i].y
-                    {
+                    else if p[i+1].x == p[i].x && p[i+1].y == p[i].y {
+                        // point doubling
                         let sq = p[i].x.square();
                         let s = (sq.double() + &sq + &P::COEFF_A) * &denoms[dx];
                         let x = s.square() - &p[i].x.double();
                         let y = -p[i].y - &(s * &(x - &p[i].x));
                         p[j].x = x;
                         p[j].y = y;
-                    }
-                    else
-                    {
+                    } else {
+                        // point addition
                         let s = (p[i].y - &p[i+1].y) * &denoms[dx];
                         let x = s.square() - &p[i].x - &p[i+1].x;
                         let y = -p[i].y - &(s * &(x - &p[i].x));
@@ -231,13 +252,10 @@ impl<P: Parameters> AffineCurve for GroupAffine<P> {
                 }
 
                 let len = p.len();
-                if len % 2 == 1
-                {
+                if len % 2 == 1 {
                     p[len/2] = p[len-1];
                     p.truncate(len/2+1);
-                }
-                else
-                {
+                } else {
                     p.truncate(len/2);
                 }
             }

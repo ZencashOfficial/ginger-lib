@@ -336,7 +336,7 @@ mod test {
     use std::str::FromStr;
     use algebra::biginteger::BigInteger768;
     use crate::{
-        parameters::{
+        crh::parameters::{
             mnt4753::MNT4PoseidonHash,
             mnt6753::MNT6PoseidonHash,
         },
@@ -438,4 +438,37 @@ mod test {
         let output = poseidon_digest.finalize();
         assert_eq!(output, expected_output, "Outputs do not match for MNT6753.");
     }
+
+    use algebra::{
+        fields::bn_382::{
+            Fr as BN382Fr, Fq as BN382Fq,
+        },
+        biginteger::BigInteger384,
+    };
+    use crate::crh::parameters::bn382::*;
+
+    #[test]
+    fn test_poseidon_hash_bn382_fr() {
+        let expected_output = BN382Fr::new(BigInteger384([5374955110091081208, 9708994766202121080, 14988884941712225891, 5210165913215347951, 13114182334648522197, 392522167697949297]));
+
+        let mut digest = BN382FrPoseidonHash::init(None);
+        digest.update(BN382Fr::from_str("1").unwrap());
+        digest.update(BN382Fr::from_str("2").unwrap());
+        let output = digest.finalize();
+
+        assert_eq!(output, expected_output, "Outputs do not match for BN382Fr");
+    }
+
+    #[test]
+    fn test_poseidon_hash_bn382_fq() {
+        let expected_output = BN382Fq::new(BigInteger384([10704305393280846886, 13510271104066299406, 8759721062701909552, 14597420682011858322, 7770486455870140465, 1389855295932765543]));
+
+        let mut digest = BN382FqPoseidonHash::init(None);
+        digest.update(BN382Fq::from_str("1").unwrap());
+        digest.update(BN382Fq::from_str("2").unwrap());
+        let output = digest.finalize();
+
+        assert_eq!(output, expected_output, "Outputs do not match for BN382Fq");
+    }
+
 }
