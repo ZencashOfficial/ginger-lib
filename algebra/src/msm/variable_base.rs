@@ -758,6 +758,7 @@ mod test {
         acc
     }
 
+    #[ignore]
     #[test]
     fn test_with_bn_382_c() {
 

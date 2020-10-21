@@ -66,4 +66,4 @@ rustc_version = "0.2"
 name = "msm_bench"
 path = "benches/msm.rs"
 harness = false
-required-features = ["bn_382"]
+required-features = ["bn_382", "parallel"]
