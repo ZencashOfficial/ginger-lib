@@ -1,5 +1,8 @@
-use crate::crh::{PoseidonParameters, FieldBasedHashParameters, PoseidonHash, batched_crh::PoseidonBatchHash};
-
+use crate::crh::{
+    PoseidonParameters,
+    FieldBasedHashParameters, PoseidonHash, batched_crh::PoseidonBatchHash,
+    PoseidonQuinticSBox,
+};
 use algebra::fields::bn_382::Fq as BN382Fq;
 use algebra::fields::bn_382::Fr as BN382Fr;
 
@@ -236,25 +239,11 @@ impl PoseidonParameters for BN382FqPoseidonParameters {
         field_new!(BN382Fq,BigInteger384([18446744073709551610, 18446744035050090351, 18405891267904796415, 14178100765618194934, 6349676926798234315, 2440510705233791302])),
         field_new!(BN382Fq,BigInteger384([18446744073709551614, 18446744060823064527, 18433126471774633215, 10874948279775915516, 2116558975599411438, 2441058215519309248])),
     ];
-
-    // The MDS matrix for fast matrix multiplication
-    const MDS_CST_SHORT: &'static [BN382Fq] = &[
-        // These constants are in Partial Montgomery representation with R = 2^64
-        // In Zexe, they are already in Montgomery representation with R = 2^384
-        field_new!(BN382Fq,BigInteger384([7631758600758942941, 0, 0, 0, 0, 0])),
-        field_new!(BN382Fq,BigInteger384([15743024058113223384, 0, 0, 0, 0, 0])),
-        field_new!(BN382Fq,BigInteger384([12667183395563342317, 0, 0, 0, 0, 0])),
-        field_new!(BN382Fq,BigInteger384([15743024058113223384, 0, 0, 0, 0, 0])),
-        field_new!(BN382Fq,BigInteger384([7631758600758942941, 0, 0, 0, 0, 0])),
-        field_new!(BN382Fq,BigInteger384([18012611860952692381, 0, 0, 0, 0, 0])),
-        field_new!(BN382Fq,BigInteger384([12667183395563342317, 0, 0, 0, 0, 0])),
-        field_new!(BN382Fq,BigInteger384([18012611860952692381, 0, 0, 0, 0, 0])),
-        field_new!(BN382Fq,BigInteger384([7631758600758942941, 0, 0, 0, 0, 0]))
-    ];
 }
 
-pub type BN382FqPoseidonHash = PoseidonHash<BN382Fq, BN382FqPoseidonParameters>;
-pub type BN382FqBatchPoseidonHash = PoseidonBatchHash<BN382Fq, BN382FqPoseidonParameters>;
+type BN382FqQuinticSbox = PoseidonQuinticSBox<BN382Fq, BN382FqPoseidonParameters>;
+pub type BN382FqPoseidonHash = PoseidonHash<BN382Fq, BN382FqPoseidonParameters, BN382FqQuinticSbox>;
+pub type BN382FqBatchPoseidonHash = PoseidonBatchHash<BN382Fq, BN382FqPoseidonParameters, BN382FqQuinticSbox>;
 
 #[derive(Clone)]
 pub struct BN382FrPoseidonParameters;
@@ -488,22 +477,8 @@ impl PoseidonParameters for BN382FrPoseidonParameters {
         field_new!(BN382Fr,BigInteger384([18446744073709551615, 18446744067266308071, 16135794463770263263, 5437474139887957758, 10281651524654481527, 1328111356865177784])),
         field_new!(BN382Fr,BigInteger384([18446744073709551610, 18446744035050090351, 4581046414073821503, 14178100765618194937, 6349676926798234315, 60200215052524402]))
     ];
-
-    // The MDS matrix for fast matrix multiplication
-    const MDS_CST_SHORT: &'static [BN382Fr] = &[
-        // These constants are in Partial Montgomery representation with R = 2^64
-        // In Zexe, they are already in Montgomery representation with R = 2^384
-        field_new!(BN382Fr,BigInteger384([15632301370771425481, 0, 0, 0, 0, 0])),
-        field_new!(BN382Fr,BigInteger384([17836116068661948670, 0, 0, 0, 0, 0])),
-        field_new!(BN382Fr,BigInteger384([15142255468231313642, 0, 0, 0, 0, 0])),
-        field_new!(BN382Fr,BigInteger384([17836116068661948670, 0, 0, 0, 0, 0])),
-        field_new!(BN382Fr,BigInteger384([15632301370771425481, 0, 0, 0, 0, 0])),
-        field_new!(BN382Fr,BigInteger384([3923461549484994631, 0, 0, 0, 0, 0])),
-        field_new!(BN382Fr,BigInteger384([15142255468231313642, 0, 0, 0, 0, 0])),
-        field_new!(BN382Fr,BigInteger384([3923461549484994631, 0, 0, 0, 0, 0])),
-        field_new!(BN382Fr,BigInteger384([15632301370771425481, 0, 0, 0, 0, 0]))
-    ];
 }
 
-pub type BN382FrPoseidonHash = PoseidonHash<BN382Fr, BN382FrPoseidonParameters>;
-pub type BN382FrBatchPoseidonHash = PoseidonBatchHash<BN382Fr, BN382FrPoseidonParameters>;
+type BN382FrQuinticSbox = PoseidonQuinticSBox<BN382Fr, BN382FrPoseidonParameters>;
+pub type BN382FrPoseidonHash = PoseidonHash<BN382Fr, BN382FrPoseidonParameters, BN382FrQuinticSbox>;
+pub type BN382FrBatchPoseidonHash = PoseidonBatchHash<BN382Fr, BN382FrPoseidonParameters, BN382FrQuinticSbox>;
