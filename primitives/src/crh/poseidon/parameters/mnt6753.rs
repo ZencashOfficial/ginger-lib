@@ -12,7 +12,7 @@ use algebra::field_new;
 #[derive(Debug, Clone)]
 pub struct MNT6753PoseidonParameters;
 
-type MNT6InversePoseidonSBox = PoseidonInverseSBox<MNT6753Fr, MNT6753PoseidonParameters>;
+pub type MNT6InversePoseidonSBox = PoseidonInverseSBox<MNT6753Fr, MNT6753PoseidonParameters>;
 pub type MNT6PoseidonHash = PoseidonHash<MNT6753Fr, MNT6753PoseidonParameters, MNT6InversePoseidonSBox>;
 pub type MNT6BatchPoseidonHash = PoseidonBatchHash<MNT6753Fr, MNT6753PoseidonParameters, MNT6InversePoseidonSBox>;
 

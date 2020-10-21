@@ -241,7 +241,7 @@ impl PoseidonParameters for BN382FqPoseidonParameters {
     ];
 }
 
-type BN382FqQuinticSbox = PoseidonQuinticSBox<BN382Fq, BN382FqPoseidonParameters>;
+pub type BN382FqQuinticSbox = PoseidonQuinticSBox<BN382Fq, BN382FqPoseidonParameters>;
 pub type BN382FqPoseidonHash = PoseidonHash<BN382Fq, BN382FqPoseidonParameters, BN382FqQuinticSbox>;
 pub type BN382FqBatchPoseidonHash = PoseidonBatchHash<BN382Fq, BN382FqPoseidonParameters, BN382FqQuinticSbox>;
 
@@ -479,6 +479,6 @@ impl PoseidonParameters for BN382FrPoseidonParameters {
     ];
 }
 
-type BN382FrQuinticSbox = PoseidonQuinticSBox<BN382Fr, BN382FrPoseidonParameters>;
+pub type BN382FrQuinticSbox = PoseidonQuinticSBox<BN382Fr, BN382FrPoseidonParameters>;
 pub type BN382FrPoseidonHash = PoseidonHash<BN382Fr, BN382FrPoseidonParameters, BN382FrQuinticSbox>;
 pub type BN382FrBatchPoseidonHash = PoseidonBatchHash<BN382Fr, BN382FrPoseidonParameters, BN382FrQuinticSbox>;
