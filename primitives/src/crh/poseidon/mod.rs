@@ -212,8 +212,8 @@ mod test {
     };
     use std::str::FromStr;
     use algebra::biginteger::BigInteger768;
-    use crate::{
-        crh::parameters::{
+    use crate::crh::{
+        poseidon::parameters::{
             mnt4753::MNT4PoseidonHash,
             mnt6753::MNT6PoseidonHash,
         },
