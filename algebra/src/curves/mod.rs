@@ -166,6 +166,14 @@ pub trait ProjectiveCurve:
     /// conversion to affine is cheap.
     fn batch_normalization(v: &mut [Self]);
 
+    /// Normalizes a slice of projective elements and outputs a vector
+    /// containing the affine equivalents.
+    fn batch_normalization_into_affine(v: &[Self]) -> Vec<Self::Affine> {
+        let mut v = v.to_vec();
+        Self::batch_normalization(&mut v);
+        v.into_iter().map(|v| v.into_affine()).collect()
+    }
+
     /// Checks if the point is already "normalized" so that
     /// cheap affine conversion is possible.
     #[must_use]

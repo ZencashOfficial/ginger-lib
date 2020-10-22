@@ -34,10 +34,10 @@ unroll = "0.1.4"
 
 [dev-dependencies]
 blake2 = "0.7"
-criterion = "0.2"
+criterion = "0.3"
 rand_xorshift = { version = "0.2" }
 paste = "1.0"
-algebra = { path = "../algebra", features = ["bls12_381", "jubjub", "mnt4_753", "mnt6_753"] }
+algebra = { path = "../algebra", features = ["bn_382", "mnt4_753", "mnt6_753"] }
 
 [features]
 parallel = [ "rayon" ]
@@ -61,3 +61,9 @@ full = [ "bls12_377", "bls12_381", "sw6", "mnt4_753", "mnt6_298", "mnt6_753", "e
 [build-dependencies]
 field-assembly = { path = "./field-assembly" }
 rustc_version = "0.2"
+
+[[bench]]
+name = "msm_bench"
+path = "benches/msm.rs"
+harness = false
+required-features = ["bn_382", "parallel"]
