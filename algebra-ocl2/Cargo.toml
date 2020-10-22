@@ -1,0 +1,44 @@
+[package]
+name = "algebra-ocl2"
+version = "0.1.0"
+authors = ["Phoinic <max@phoinic.com.ua>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+algebra = { path = "../algebra", features = [ "bn_382" ] }
+rayon = { version = "1" }
+rand = { version = "0.7" }
+rand_xorshift = "0.2"
+rust-gpu-tools = { version = "0.1.0" }
+thiserror = "1.0.10"
+log = "0.4.8"
+lazy_static = "1.4.0"
+itertools = { version = "0.8.0" }
+bit-vec = "0.6"
+futures = "0.1"
+futures-cpupool = { version = "0.1" }
+crossbeam = { version = "0.7" }
+fs2 = { version = "0.4.3" }
+
+[dev-dependencies]
+criterion = "0.2.7"
+rand_xorshift = "0.2"
+env_logger = "0.7.1"
+algebra-ocl2 = { path = "../algebra-ocl2", features = ["gpu", "bn_382"] }
+
+[features]
+asm = [ "algebra/llvm_asm"]
+n_fold = ["algebra/n_fold"]
+mnt6_298 = [ "algebra/mnt6_298"]
+mnt4_753 = [ "algebra/mnt4_753"]
+mnt6_753 = [ "algebra/mnt6_753"]
+bls12_381 = [ "algebra/bls12_381"]
+jubjub = [ "algebra/jubjub" ]
+bls12_377 = [ "algebra/bls12_377"]
+sw6 = [ "algebra/sw6" ]
+parallel = ["algebra/parallel"]
+bn_382 = ["algebra/bn_382"]
+
+gpu = []

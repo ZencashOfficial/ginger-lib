@@ -3,6 +3,7 @@
 members = [
     "algebra",
     "algebra-ocl",
+    "algebra-ocl2",
     "bench-utils",
     "primitives",
     "proof-systems",
