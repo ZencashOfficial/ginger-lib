@@ -1,0 +1,24 @@
+[package]
+name = "algebra-ocl"
+version = "0.1.0"
+authors = ["Phoinic <max@phoinic.com.ua>"]
+edition = "2018"
+
+[dependencies]
+algebra = { path = "../algebra", features = [ "parallel" ] }
+rust-gpu-tools = { git = "https://github.com/phoinic/rust-gpu-tools" }
+lazy_static = "1.4.0"
+itertools = { version = "0.8.0" }
+log = "0.4.8"
+thiserror = "1.0.10"
+crossbeam = { version = "0.7" }
+rand = { version = "0.7" }
+rand_xorshift = "0.2"
+
+[features]
+gpu = []
+
+[dev-dependencies]
+env_logger = "0.7.1"
+algebra = { path = "../algebra", features = [ "bn_382" ] }
+algebra-ocl = { path = "../algebra-ocl", features = [ "gpu" ] }
