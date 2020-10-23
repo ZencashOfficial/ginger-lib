@@ -46,9 +46,9 @@ impl<F: PrimeField> fmt::Debug for EvaluationDomain<F> {
 }
 
 impl<F: PrimeField> EvaluationDomain<F> {
-    fn calculate_chunk_size(size: usize) -> usize {
+    /*fn calculate_chunk_size(size: usize) -> usize {
         size / rayon::current_num_threads()
-    }
+    }*/
 
     /// Sample an element that is *not* in the domain.
     pub fn sample_element_outside_domain<R: Rng>(&self, rng: &mut R) -> F {
@@ -289,15 +289,7 @@ impl<F: PrimeField> EvaluationDomain<F> {
     pub fn mul_polynomials_in_evaluation_domain(&self, self_evals: &[F], other_evals: &[F]) -> Vec<F> {
         assert_eq!(self_evals.len(), other_evals.len());
         let mut result = self_evals.to_vec();
-        let chunk_size = Self::calculate_chunk_size(self.size());
-        result
-            .par_chunks_mut(chunk_size)
-            .zip(other_evals.par_chunks(chunk_size))
-            .for_each(|(a, b)| {
-                for (a, b) in a.iter_mut().zip(b) {
-                    *a *= b;
-                }
-            });
+        result.par_iter_mut().zip(other_evals).for_each(|(a,b)| *a *= b);
         result
     }
 }
