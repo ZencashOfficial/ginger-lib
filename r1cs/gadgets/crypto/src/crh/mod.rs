@@ -43,3 +43,16 @@ pub trait FieldBasedHashGadget<H: FieldBasedHash<Data = ConstraintF>, Constraint
         input: &[Self::DataGadget],
     ) -> Result<Self::DataGadget, SynthesisError>;
 }
+
+pub trait FieldHasherGadget<
+    H: FieldBasedHash<Data = ConstraintF>,
+    ConstraintF: Field,
+    HG: FieldBasedHashGadget<H, ConstraintF>
+>
+{
+    fn enforce_hash<CS: ConstraintSystem<ConstraintF>>(
+        &self,
+        cs: CS,
+        personalization: Option<&[HG::DataGadget]>
+    ) -> Result<HG::DataGadget, SynthesisError>;
+}

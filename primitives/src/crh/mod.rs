@@ -3,6 +3,7 @@ use algebra::{
 };
 use rand::Rng;
 use std::hash::Hash;
+use serde::{Serialize, Deserialize};
 
 pub mod bowe_hopwood;
 pub mod injective_map;
@@ -19,8 +20,8 @@ use rayon::prelude::*;
 
 pub trait FixedLengthCRH {
     const INPUT_SIZE_BITS: usize;
-    type Output: ToBytes + Clone + Eq + Hash + Default;
-    type Parameters: Clone + Default;
+    type Output: ToBytes + Serialize + for<'a> Deserialize<'a> + Clone + Eq + Hash + Default;
+    type Parameters: Clone + Serialize + for<'a> Deserialize<'a> + Default;
 
     fn setup<R: Rng>(r: &mut R) -> Result<Self::Parameters, Error>;
     fn evaluate(parameters: &Self::Parameters, input: &[u8]) -> Result<Self::Output, Error>;
@@ -52,6 +53,16 @@ pub trait FieldBasedHash {
 
     /// Reset self to its initial state, allowing to change `personalization` too if needed.
     fn reset(&mut self, personalization: Option<&[Self::Data]>) -> &mut Self;
+}
+
+/// Helper allowing to hash the implementor of this trait into a Field
+pub trait FieldHasher<F: Field, H: FieldBasedHash<Data = F>> {
+
+    /// Hash `self`, given some optional `personalization` into a Field
+    fn hash(
+        &self,
+        personalization: Option<&[H::Data]>
+    ) -> Result<H::Data, Error>;
 }
 
 pub trait BatchFieldBasedHash {

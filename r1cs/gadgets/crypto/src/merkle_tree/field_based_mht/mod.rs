@@ -1,17 +1,21 @@
-use algebra::{Field, PrimeField};
+use algebra::{Field, PrimeField, FpParameters};
 use r1cs_core::{ConstraintSystem, SynthesisError};
-use r1cs_std::prelude::*;
+use r1cs_std::{
+    prelude::*,
+    fields::fp::FpGadget,
+};
 
 use primitives::{
     crh::FieldBasedHash,
     merkle_tree::field_based_mht::*,
 };
 use crate::crh::FieldBasedHashGadget;
+use crate::FieldBasedMerkleTreePathGadget;
 
 use std::borrow::Borrow;
 use std::marker::PhantomData;
 
-pub struct FieldBasedMerkleTreePathGadget<P, HGadget, ConstraintF>
+pub struct FieldBasedBinaryMerkleTreePathGadget<P, HGadget, ConstraintF>
     where
         P: FieldBasedMerkleTreeParameters<Data = ConstraintF>,
         HGadget: FieldBasedHashGadget<P::H, ConstraintF>,
@@ -20,51 +24,76 @@ pub struct FieldBasedMerkleTreePathGadget<P, HGadget, ConstraintF>
     path: Vec<(HGadget::DataGadget, Boolean)>,
 }
 
-impl<P, HGadget, ConstraintF> FieldBasedMerkleTreePathGadget<P, HGadget, ConstraintF>
+impl<P, HGadget, ConstraintF> FieldBasedBinaryMerkleTreePathGadget<P, HGadget, ConstraintF>
     where
         P: FieldBasedMerkleTreeParameters<Data = ConstraintF>,
         HGadget: FieldBasedHashGadget<P::H, ConstraintF>,
         ConstraintF: PrimeField,
 {
-    pub fn check_membership<
-        CS: ConstraintSystem<ConstraintF>,
-    >(
+    pub fn enforce_leaf_index_bits<CS: ConstraintSystem<ConstraintF>>(
         &self,
         cs: CS,
-        root: &HGadget::DataGadget,
-        leaf: &HGadget::DataGadget,
-    ) -> Result<(), SynthesisError> {
-        self.conditionally_check_membership(cs, root, leaf, &Boolean::Constant(true))
+        leaf_index_bits: &[Boolean],
+    ) -> Result<(), SynthesisError>
+    {
+        self.conditionally_enforce_leaf_index_bits(cs, leaf_index_bits, &Boolean::Constant(true))
     }
 
-    /// Coherently with the primitive, if `P::HASH_LEAVES` = `true` then we hash the
-    /// leaf, otherwise we assume it to be just one FieldGadget element.
-    pub fn conditionally_check_membership<
-        CS: ConstraintSystem<ConstraintF>,
-    >(
+    pub fn conditionally_enforce_leaf_index_bits<CS: ConstraintSystem<ConstraintF>>(
         &self,
         mut cs: CS,
-        root: &HGadget::DataGadget,
-        leaf: &HGadget::DataGadget,
-        should_enforce: &Boolean,
-    ) -> Result<(), SynthesisError> {
+        leaf_index_bits: &[Boolean],
+        should_enforce: &Boolean
+    ) -> Result<(), SynthesisError>
+    {
+        for (i, ((_, path_bit), leaf_index_bit)) in self.path
+            .iter().zip(leaf_index_bits.iter().rev()).enumerate()
+            {
+                path_bit.conditional_enforce_equal(
+                    cs.ns(|| format!("index_equality_{}", i)),
+                    leaf_index_bit,
+                    should_enforce
+                )?;
+            }
 
+        Ok(())
+    }
+}
+
+impl<P, HGadget, ConstraintF> FieldBasedMerkleTreePathGadget<FieldBasedBinaryMHTPath<P>, P::H, HGadget, ConstraintF>
+for FieldBasedBinaryMerkleTreePathGadget<P, HGadget, ConstraintF>
+    where
+        P: FieldBasedMerkleTreeParameters<Data = ConstraintF>,
+        HGadget: FieldBasedHashGadget<P::H, ConstraintF>,
+        ConstraintF: PrimeField,
+{
+    fn length(&self) -> usize {
+        self.path.len()
+    }
+
+    /// Enforces correct reconstruction of the root of the Merkle Tree
+    /// from `self` and `leaf`.
+    fn enforce_merkle_path<CS: ConstraintSystem<ConstraintF>>(
+        &self,
+        mut cs: CS,
+        leaf: &HGadget::DataGadget,
+    ) -> Result<HGadget::DataGadget, SynthesisError> {
         let mut previous_hash = (*leaf).clone();
 
         for (i, &(ref sibling_hash, ref direction)) in self.path.iter().enumerate() {
 
             //Select left hash based on direction
             let lhs = HGadget::DataGadget::conditionally_select(cs.ns(|| format!("Choose left hash {}", i)),
-                                                                  direction,
-                                                                  &sibling_hash,
-                                                                  &previous_hash
+                                                                direction,
+                                                                &sibling_hash,
+                                                                &previous_hash
             )?;
 
             //Select right hash based on direction
             let rhs = HGadget::DataGadget::conditionally_select(cs.ns(|| format!("Choose right hash {}", i)),
-                                                                  direction,
-                                                                  &previous_hash,
-                                                                  &sibling_hash
+                                                                direction,
+                                                                &previous_hash,
+                                                                &sibling_hash
             )?;
 
             previous_hash = hash_inner_node_gadget::<P::H, HGadget, ConstraintF, _>(
@@ -74,11 +103,31 @@ impl<P, HGadget, ConstraintF> FieldBasedMerkleTreePathGadget<P, HGadget, Constra
             )?;
         }
 
-        root.conditional_enforce_equal(
-            &mut cs.ns(|| "root_is_last"),
-            &previous_hash,
-            should_enforce,
-        )
+        Ok(previous_hash)
+    }
+
+    /// Given a field element `leaf_index` representing the position of a leaf in a
+    /// Merkle Tree, enforce that the leaf index corresponding to `self` path is the
+    /// same of `leaf_index`.
+    fn conditionally_enforce_leaf_index<CS: ConstraintSystem<ConstraintF>>(
+        &self,
+        mut cs: CS,
+        leaf_index: &FpGadget<ConstraintF>,
+        should_enforce: &Boolean
+    ) -> Result<(), SynthesisError>
+    {
+        let leaf_index_bits = leaf_index.to_bits_with_length_restriction(
+            cs.ns(|| "get leaf index bits"),
+            (ConstraintF::Params::MODULUS_BITS as usize) - self.path.len()
+        )?;
+
+        self.conditionally_enforce_leaf_index_bits(
+            cs.ns(|| "enforce leaf index bits"),
+            leaf_index_bits.as_slice(),
+            should_enforce
+        )?;
+
+        Ok(())
     }
 }
 
@@ -173,7 +222,7 @@ pub(crate) fn hash_inner_node_gadget<H, HG, ConstraintF, CS>(
 }
 
 impl<P, HGadget, ConstraintF> AllocGadget<FieldBasedBinaryMHTPath<P>, ConstraintF>
-for FieldBasedMerkleTreePathGadget<P, HGadget, ConstraintF>
+for FieldBasedBinaryMerkleTreePathGadget<P, HGadget, ConstraintF>
     where
         P: FieldBasedMerkleTreeParameters<Data = ConstraintF>,
         HGadget: FieldBasedHashGadget<P::H, ConstraintF>,
@@ -199,7 +248,7 @@ for FieldBasedMerkleTreePathGadget<P, HGadget, ConstraintF>
                 })?;
             path.push((sibling_hash, direction));
         }
-        Ok(FieldBasedMerkleTreePathGadget { path })
+        Ok(FieldBasedBinaryMerkleTreePathGadget { path })
     }
 
     fn alloc_input<F, T, CS: ConstraintSystem<ConstraintF>>(
@@ -222,7 +271,7 @@ for FieldBasedMerkleTreePathGadget<P, HGadget, ConstraintF>
                 })?;
             path.push((sibling_hash, direction));
         }
-        Ok(FieldBasedMerkleTreePathGadget { path })
+        Ok(FieldBasedBinaryMerkleTreePathGadget { path })
     }
 }
 
@@ -289,18 +338,42 @@ mod test {
             let leaf_g = FqGadget::alloc(cs.ns(|| "alloc leaf"), || Ok(leaf)).unwrap();
 
             // Allocate Merkle Tree Path
-            let cw = FieldBasedMerkleTreePathGadget::<_, HG, _>::alloc(
+            let cw = FieldBasedBinaryMerkleTreePathGadget::<_, HG, _>::alloc(
                 &mut cs.ns(|| format!("new_witness_{}", i)),
                 || Ok(proof),
             )
                 .unwrap();
 
+            // Check_membership test
             cw.check_membership(
-                &mut cs.ns(|| format!("new_witness_check_{}", i)),
+                &mut cs.ns(|| format!("check_membership_{}", i)),
                 &root,
                 &leaf_g,
             )
                 .unwrap();
+
+            // Enforce Merkle Path test
+            let root_1 = cw.enforce_merkle_path(
+                &mut cs.ns(|| format!("enforce_merkle_path_{}", i)),
+                &leaf_g,
+            ).unwrap();
+
+            root.enforce_equal(
+                &mut cs.ns(|| format!("check_{} root == root_1", i)),
+                &root_1,
+            ).unwrap();
+
+            // Enforce leaf_index check
+            let fe_index = Fr::from(i as u32);
+            let fe_index_g = FqGadget::alloc(
+                cs.ns(|| format!("alloc_index_{}", i)),
+                || Ok(fe_index)
+            ).unwrap();
+
+            cw.enforce_leaf_index(
+                &mut cs.ns(|| format!("enforce_leaf_index_{}", i)),
+                &fe_index_g
+            ).unwrap();
 
             if !cs.is_satisfied() {
                 satisfied = false;
