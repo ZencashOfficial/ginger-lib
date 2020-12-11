@@ -12,10 +12,13 @@ macro_rules! impl_Fp {
             PartialEq(bound = ""),
             Eq(bound = "")
         )]
+        #[derive(Serialize, Deserialize)]
+        #[serde(transparent)]
         pub struct $Fp<P>(
             pub $BigIntegerType,
             #[derivative(Debug = "ignore")]
             #[doc(hidden)]
+            #[serde(skip)]
             pub PhantomData<P>,
         );
 

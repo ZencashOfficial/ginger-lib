@@ -1,14 +1,12 @@
 extern crate rand;
 extern crate rayon;
 
-use algebra::{PrimeField, MulShort};
+use algebra::PrimeField;
 use std::marker::PhantomData;
-use crate::crh::{
-    BatchFieldBasedHash, BatchSBox,
-};
-use crate::{Error, PoseidonParameters, PoseidonHash};
+use crate::crh::BatchFieldBasedHash;
+use crate::{Error, PoseidonParameters, PoseidonHash, PoseidonBatchSBox};
 
-pub struct PoseidonBatchHash<F: PrimeField, P: PoseidonParameters<Fr = F>, SB: BatchSBox<Field = F, Parameters = P>>
+pub struct PoseidonBatchHash<F: PrimeField, P: PoseidonParameters<Fr = F>, SB: PoseidonBatchSBox<P>>
 {
     _field:      PhantomData<F>,
     _parameters: PhantomData<P>,
@@ -17,9 +15,9 @@ pub struct PoseidonBatchHash<F: PrimeField, P: PoseidonParameters<Fr = F>, SB: B
 
 impl<F, P, SB> PoseidonBatchHash<F, P, SB>
     where
-        F: PrimeField + MulShort<F, Output = F>,
+        F: PrimeField,
         P: PoseidonParameters<Fr = F>,
-        SB: BatchSBox<Field = F, Parameters = P>,
+        SB: PoseidonBatchSBox<P>,
 {
 
     fn poseidon_full_round(vec_state: &mut [Vec<P::Fr>], round_cst_idx: &mut usize, last: bool) {
@@ -90,9 +88,9 @@ impl<F, P, SB> PoseidonBatchHash<F, P, SB>
 
 impl<F, P, SB> BatchFieldBasedHash for PoseidonBatchHash<F, P, SB>
     where
-        F: PrimeField + MulShort<F, Output = F>,
+        F: PrimeField,
         P: PoseidonParameters<Fr = F>,
-        SB: BatchSBox<Field = F, Parameters = P>,
+        SB: PoseidonBatchSBox<P>,
 {
     type Data = F;
     type BaseHash = PoseidonHash<F, P, SB>;

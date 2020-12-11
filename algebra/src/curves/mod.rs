@@ -5,6 +5,7 @@ use std::{
     hash::Hash,
     ops::{Add, AddAssign, Neg, Sub, SubAssign},
 };
+use serde::{Serialize, Deserialize};
 
 pub mod models;
 
@@ -59,7 +60,8 @@ pub trait PairingEngine: Sized + 'static + Copy + Debug + Sync + Send + Eq + Par
         + Into<Self::G1Prepared>;
 
     /// A G1 element that has been preprocessed for use in a pairing.
-    type G1Prepared: ToBytes + FromBytes + Default + Clone + Send + Sync + Debug + From<Self::G1Affine>;
+    type G1Prepared: ToBytes + FromBytes + Serialize + for<'a> Deserialize<'a> + Default + Clone +
+                     Send + Sync + Debug + From<Self::G1Affine>;
 
     /// The projective representation of an element in G2.
     type G2Projective: ProjectiveCurve<BaseField = Self::Fqe, ScalarField = Self::Fr, Affine = Self::G2Affine>
@@ -73,7 +75,8 @@ pub trait PairingEngine: Sized + 'static + Copy + Debug + Sync + Send + Eq + Par
         + Into<Self::G2Prepared>;
 
     /// A G2 element that has been preprocessed for use in a pairing.
-    type G2Prepared: ToBytes + FromBytes + Default + Eq + PartialEq + Clone + Send + Sync + Debug + From<Self::G2Affine>;
+    type G2Prepared: ToBytes + FromBytes + Serialize + for<'a> Deserialize<'a> + Default + Eq +
+                     PartialEq + Clone + Send + Sync + Debug + From<Self::G2Affine>;
 
     /// The base field that hosts G1.
     type Fq: PrimeField + SquareRootField;
@@ -123,6 +126,8 @@ pub trait ProjectiveCurve:
     + Sized
     + ToBytes
     + FromBytes
+    + Serialize
+    + for <'a> Deserialize<'a>
     + SemanticallyValid
     + FromBytesChecked
     + Copy
@@ -218,6 +223,8 @@ pub trait AffineCurve:
     + Sized
     + ToBytes
     + FromBytes
+    + Serialize
+    + for <'a> Deserialize<'a>
     + SemanticallyValid
     + FromBytesChecked
     + Copy

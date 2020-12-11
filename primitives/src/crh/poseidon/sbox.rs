@@ -1,10 +1,32 @@
-use algebra::{PrimeField, MulShort};
+use algebra::{Field, PrimeField, MulShort};
 use crate::{PoseidonParameters, SBox, BatchSBox};
 use std::marker::PhantomData;
 
 pub trait PoseidonInverseParameters: PoseidonParameters {
     const MDS_CST_SHORT: &'static [Self::Fr];  // The MDS matrix for fast matrix multiplication
 }
+
+pub trait PoseidonSBox<P: PoseidonParameters>: SBox<Field = P::Fr, Parameters = P> {
+
+    // Function that does the scalar multiplication
+    fn scalar_mul(res: &mut <Self as SBox>::Field, state: &mut [<Self as SBox>::Field], start_idx_cst: usize);
+
+    // Function that does the mix matrix
+    fn matrix_mix(state: &mut Vec<<Self as SBox>::Field>)
+    {
+        // the new state where the result will be stored initialized to zero elements
+        let mut new_state = vec![<Self as SBox>::Field::zero(); P::T];
+
+        let mut idx_cst = 0;
+        for i in 0..P::T {
+            Self::scalar_mul(&mut new_state[i], state, idx_cst);
+            idx_cst += P::T;
+        }
+        *state = new_state;
+    }
+}
+
+pub trait PoseidonBatchSBox<P: PoseidonParameters>: PoseidonSBox<P> + BatchSBox {}
 
 /// S-Box: S(x) = x^-1
 #[derive(Debug)]
@@ -16,32 +38,6 @@ pub struct PoseidonInverseSBox<F: PrimeField + MulShort<F, Output = F>, P: Posei
 impl<F: PrimeField + MulShort<F, Output = F>, P: PoseidonInverseParameters<Fr = F>> SBox for PoseidonInverseSBox<F, P> {
     type Field = F;
     type Parameters = P;
-
-    // It uses a partial Montgomery multiplication defined as PM(x, t) = x * t * 2^-64 mod M
-    // t is a 64-bit matrix constant. In the algorithm, the constants are represented in
-    // partial Montgomery representation, i.e. t * 2^64 mod M
-    #[inline]
-    fn scalar_mul(res: &mut F, state: &mut [F], mut start_idx_cst: usize) {
-        state.iter().for_each(|&x| {
-            let elem = P::MDS_CST_SHORT[start_idx_cst].mul_short(x);
-            start_idx_cst += 1;
-            *res += &elem;
-        });
-    }
-
-    //Perform the mix matrix with fast algorithm
-    #[inline]
-    fn matrix_mix(state: &mut Vec<F>) {
-        // the new state where the result will be stored initialized to zero elements
-        let mut new_state = vec![F::zero(); P::T];
-
-        let mut idx_cst = 0;
-        for i in 0..P::T {
-            Self::scalar_mul(&mut new_state[i], state, idx_cst);
-            idx_cst += P::T;
-        }
-        *state = new_state;
-    }
 
     #[inline]
     fn apply_full(state: &mut Vec<F>, last: bool) {
@@ -84,6 +80,22 @@ impl<F: PrimeField + MulShort<F, Output = F>, P: PoseidonInverseParameters<Fr = 
         Self::matrix_mix(state);
     }
 }
+
+impl<F: PrimeField + MulShort<F, Output = F>, P: PoseidonInverseParameters<Fr = F>> PoseidonSBox<P> for PoseidonInverseSBox<F, P> {
+
+    // It uses a partial Montgomery multiplication defined as PM(x, t) = x * t * 2^-64 mod M
+    // t is a 64-bit matrix constant. In the algorithm, the constants are represented in
+    // partial Montgomery representation, i.e. t * 2^64 mod M
+    #[inline]
+    fn scalar_mul(res: &mut F, state: &mut [F], mut start_idx_cst: usize) {
+        state.iter().for_each(|&x| {
+            let elem = P::MDS_CST_SHORT[start_idx_cst].mul_short(x);
+            start_idx_cst += 1;
+            *res += &elem;
+        });
+    }
+}
+
 
 impl<F: PrimeField + MulShort<F, Output = F>, P: PoseidonInverseParameters<Fr = F>> BatchSBox for PoseidonInverseSBox<F, P> {
 
@@ -180,6 +192,9 @@ impl<F: PrimeField + MulShort<F, Output = F>, P: PoseidonInverseParameters<Fr = 
     }
 }
 
+impl<F: PrimeField + MulShort<F, Output = F>, P: PoseidonInverseParameters<Fr = F>> PoseidonBatchSBox<P>
+for PoseidonInverseSBox<F, P> {}
+
 /// S-Box: S(x) = x^5
 #[derive(Debug)]
 pub struct PoseidonQuinticSBox<F: PrimeField, P: PoseidonParameters<Fr = F>> {
@@ -196,10 +211,7 @@ impl<F: PrimeField, P: PoseidonParameters<Fr = F>> PoseidonQuinticSBox<F, P> {
     }
 }
 
-impl<F: PrimeField, P: PoseidonParameters<Fr = F>> SBox for PoseidonQuinticSBox<F, P> {
-    type Field = F;
-    type Parameters = P;
-
+impl<F: PrimeField, P: PoseidonParameters<Fr = F>> PoseidonSBox<P> for PoseidonQuinticSBox<F, P> {
     // It uses Montgomery multiplication
     // Constants are defined such that the result is x * t * 2^n mod M,
     // that is the Montgomery representation of the operand x * t mod M, and t is the 64-bit constant
@@ -211,19 +223,12 @@ impl<F: PrimeField, P: PoseidonParameters<Fr = F>> SBox for PoseidonQuinticSBox<
             *res += &elem;
         });
     }
+}
 
-    #[inline]
-    fn matrix_mix(state: &mut Vec<F>) {
-        // the new state where the result will be stored initialized to zero elements
-        let mut new_state = vec![F::zero(); P::T];
 
-        let mut idx_cst = 0;
-        for i in 0..P::T {
-            Self::scalar_mul(&mut new_state[i], state, idx_cst);
-            idx_cst += P::T;
-        }
-        *state = new_state;
-    }
+impl<F: PrimeField, P: PoseidonParameters<Fr = F>> SBox for PoseidonQuinticSBox<F, P> {
+    type Field = F;
+    type Parameters = P;
 
     #[inline]
     fn apply_full(state: &mut Vec<F>, last: bool) {
@@ -248,3 +253,4 @@ impl<F: PrimeField, P: PoseidonParameters<Fr = F>> SBox for PoseidonQuinticSBox<
 }
 
 impl<F: PrimeField, P: PoseidonParameters<Fr = F>> BatchSBox for PoseidonQuinticSBox<F, P> {}
+impl<F: PrimeField, P: PoseidonParameters<Fr = F>> PoseidonBatchSBox<P> for PoseidonQuinticSBox<F, P> {}

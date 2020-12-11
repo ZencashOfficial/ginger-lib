@@ -25,6 +25,7 @@ use std::{
 };
 use rand::rngs::OsRng;
 use primitives::signature::schnorr::field_based_schnorr::FieldBasedSchnorrPk;
+use r1cs_std::alloc::ConstantGadget;
 
 #[derive(Derivative)]
 #[derivative(
@@ -93,6 +94,7 @@ for FieldBasedSchnorrSigGadget<ConstraintF, G>
     }
 }
 
+#[derive(Clone)]
 pub struct FieldBasedSchnorrPkGadget<
     ConstraintF: PrimeField,
     G: Group,
@@ -159,6 +161,23 @@ for FieldBasedSchnorrPkGadget<ConstraintF, G, GG>
     {
         let pk = GG::alloc_input(cs.ns(|| "alloc pk"), || f().map(|pk| pk.borrow().0))?;
         Ok( Self{ pk, _field: PhantomData, _group: PhantomData } )
+    }
+}
+
+impl<ConstraintF, G, GG> ConstantGadget<FieldBasedSchnorrPk<G>, ConstraintF>
+for FieldBasedSchnorrPkGadget<ConstraintF, G, GG>
+    where
+        ConstraintF: PrimeField,
+        G: Group,
+        GG: GroupGadget<G, ConstraintF, Value = G>,
+{
+    fn from_value<CS: ConstraintSystem<ConstraintF>>(mut cs: CS, value: &FieldBasedSchnorrPk<G>) -> Self {
+        let pk = GG::from_value(cs.ns(|| "hardcode pk"), &value.0);
+        Self{ pk, _field: PhantomData, _group: PhantomData }
+    }
+
+    fn get_constant(&self) -> FieldBasedSchnorrPk<G> {
+        FieldBasedSchnorrPk::<G>(self.pk.get_value().unwrap())
     }
 }
 
@@ -267,7 +286,7 @@ impl<ConstraintF, G, GG, H, HG> FieldBasedSchnorrSigVerificationGadget<Constrain
             // If add is incomplete, and s * G - e * pk = 0, the circuit of the add won't be satisfiable
             .add(cs.ns(|| "s * G - e * pk "), &neg_e_times_pk)?;
 
-        let r_prime_coords = r_prime.to_field_gadget_elements()?;
+        let r_prime_coords = r_prime.to_field_gadget_elements(cs.ns(|| "r_prime to fes"))?;
 
         // Check e' = H(m || R' || pk.x)
         // Best constraints-efficiency is achieved when m is one field element
@@ -275,7 +294,7 @@ impl<ConstraintF, G, GG, H, HG> FieldBasedSchnorrSigVerificationGadget<Constrain
         let mut hash_input = Vec::new();
         hash_input.extend_from_slice(message);
         hash_input.extend_from_slice(r_prime_coords.as_slice());
-        hash_input.push(public_key.to_field_gadget_elements().unwrap()[0].clone());
+        hash_input.push(public_key.to_field_gadget_elements(cs.ns(|| "pk to fes")).unwrap()[0].clone());
 
         HG::check_evaluation_gadget(
             cs.ns(|| "check e_prime"),
@@ -317,11 +336,12 @@ for FieldBasedSchnorrSigVerificationGadget<ConstraintF, G, GG, H, HG>
         Ok(is_verified)
     }
 
-    fn enforce_signature_verification<CS: ConstraintSystem<ConstraintF>>(
+    fn conditionally_enforce_signature_verification<CS: ConstraintSystem<ConstraintF>>(
         mut cs: CS,
         public_key: &Self::PublicKeyGadget,
         signature: &Self::SignatureGadget,
-        message: &[Self::DataGadget]
+        message: &[Self::DataGadget],
+        should_enforce: &Boolean,
     ) -> Result<(), SynthesisError> {
 
         let e_prime = Self::enforce_signature_computation(
@@ -330,7 +350,11 @@ for FieldBasedSchnorrSigVerificationGadget<ConstraintF, G, GG, H, HG>
             signature,
             message
         )?;
-        signature.e.enforce_equal(cs.ns(|| "signature must be verified"), &e_prime)?;
+        signature.e.conditional_enforce_equal(
+            cs.ns(|| "conditional verify signature"),
+            &e_prime,
+            should_enforce
+        )?;
         Ok(())
     }
 }

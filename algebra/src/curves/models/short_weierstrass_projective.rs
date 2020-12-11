@@ -13,6 +13,7 @@ use crate::{
     fields::{BitIterator, Field, PrimeField, SquareRootField},
 };
 use std::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign};
+use serde::{Serialize, Deserialize};
 
 #[derive(Derivative)]
 #[derivative(
@@ -23,11 +24,13 @@ use std::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign};
     Debug(bound = "P: Parameters"),
     Hash(bound = "P: Parameters")
 )]
+#[derive(Serialize, Deserialize)]
 pub struct GroupAffine<P: Parameters> {
     pub x: P::BaseField,
     pub y: P::BaseField,
     pub infinity: bool,
     #[derivative(Debug = "ignore")]
+    #[serde(skip)]
     _params: PhantomData<P>,
 }
 
@@ -240,13 +243,16 @@ impl<P: Parameters> AffineCurve for GroupAffine<P> {
                         let y = -p[i].y - &(s * &(x - &p[i].x));
                         p[j].x = x;
                         p[j].y = y;
-                    } else {
-                        // point addition
+                        p[j].infinity = false;
+                    }
+                    else
+                    {
                         let s = (p[i].y - &p[i+1].y) * &denoms[dx];
                         let x = s.square() - &p[i].x - &p[i+1].x;
                         let y = -p[i].y - &(s * &(x - &p[i].x));
                         p[j].x = x;
                         p[j].y = y;
+                        p[j].infinity = false;
                     }
                     dx += 1;
                 }
@@ -419,10 +425,12 @@ impl<P: Parameters> Default for GroupAffine<P> {
     Debug(bound = "P: Parameters"),
     Hash(bound = "P: Parameters")
 )]
+#[derive(Serialize, Deserialize)]
 pub struct GroupProjective<P: Parameters> {
     pub x:   P::BaseField,
     pub y:   P::BaseField,
     pub z:   P::BaseField,
+    #[serde(skip)]
     _params: PhantomData<P>,
 }
 

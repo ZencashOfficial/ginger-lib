@@ -1,7 +1,7 @@
 extern crate rand;
 extern crate rayon;
 
-use algebra::{PrimeField, MulShort};
+use algebra::PrimeField;
 
 use std::marker::PhantomData;
 
@@ -31,7 +31,7 @@ pub trait PoseidonParameters: 'static + FieldBasedHashParameters + Clone {
 }
 
 #[derive(Debug)]
-pub struct PoseidonHash<F: PrimeField, P: PoseidonParameters<Fr = F>, SB: SBox<Field = F, Parameters = P>>{
+pub struct PoseidonHash<F: PrimeField, P: PoseidonParameters<Fr = F>, SB: PoseidonSBox<P>>{
     state: Vec<F>,
     pending: Vec<F>,
     _parameters: PhantomData<P>,
@@ -40,9 +40,9 @@ pub struct PoseidonHash<F: PrimeField, P: PoseidonParameters<Fr = F>, SB: SBox<F
 
 impl<F, P, SB> PoseidonHash<F, P, SB>
     where
-        F: PrimeField + MulShort<F, Output = F>,
+        F: PrimeField,
         P: PoseidonParameters<Fr = F>,
-        SB: SBox<Field = F, Parameters = P>,
+        SB: PoseidonSBox<P>,
 {
     #[inline]
     fn apply_permutation(&mut self) {
@@ -127,9 +127,9 @@ impl<F, P, SB> PoseidonHash<F, P, SB>
 
 impl<F, P, SB> FieldBasedHash for PoseidonHash<F, P, SB>
     where
-        F: PrimeField + MulShort<F, Output = F>,
+        F: PrimeField,
         P: PoseidonParameters<Fr = F>,
-        SB: SBox<Field = F, Parameters = P>,
+        SB: PoseidonSBox<P>,
 {
     type Data = F;
     type Parameters = P;

@@ -1,9 +1,6 @@
-use algebra::{PrimeField, MulShort};
-use primitives::crh::{
-    SBox,
-    poseidon::{
+use algebra::PrimeField;
+use primitives::crh::poseidon::{
         PoseidonHash, PoseidonParameters
-    }
 };
 use crate::crh::{
     SBoxGadget, FieldBasedHashGadget
@@ -32,11 +29,13 @@ pub mod bn382;
 #[cfg(feature = "bn_382")]
 pub use self::bn382::*;
 
+use primitives::PoseidonSBox;
+
 pub struct PoseidonHashGadget
 <
     ConstraintF: PrimeField,
     P:           PoseidonParameters<Fr = ConstraintF>,
-    SB:          SBox<Field = ConstraintF, Parameters = P>,
+    SB:          PoseidonSBox<P>,
     SBG:         SBoxGadget<ConstraintF, SB>,
 >
 {
@@ -49,7 +48,7 @@ pub struct PoseidonHashGadget
 impl<
     ConstraintF: PrimeField,
     P:   PoseidonParameters<Fr = ConstraintF>,
-    SB:  SBox<Field = ConstraintF, Parameters = P>,
+    SB:  PoseidonSBox<P>,
     SBG: SBoxGadget<ConstraintF, SB>
 > PoseidonHashGadget<ConstraintF, P, SB, SBG>
 {
@@ -199,9 +198,9 @@ impl<
 impl<ConstraintF, P, SB, SBG> FieldBasedHashGadget<PoseidonHash<ConstraintF, P, SB>, ConstraintF>
     for PoseidonHashGadget<ConstraintF, P, SB, SBG>
         where
-            ConstraintF: PrimeField + MulShort<ConstraintF, Output = ConstraintF>,
+            ConstraintF: PrimeField,
             P:           PoseidonParameters<Fr = ConstraintF>,
-            SB:          SBox<Field = ConstraintF, Parameters = P>,
+            SB:          PoseidonSBox<P>,
             SBG:         SBoxGadget<ConstraintF, SB>,
 {
     type DataGadget = FpGadget<ConstraintF>;
