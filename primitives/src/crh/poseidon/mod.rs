@@ -8,7 +8,6 @@ use std::marker::PhantomData;
 use crate::crh::{
     FieldBasedHash,
     FieldBasedHashParameters,
-    SBox,
 };
 
 pub mod batched_crh;
