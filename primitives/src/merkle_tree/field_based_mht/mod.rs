@@ -24,7 +24,7 @@ use serde::{Serialize, Deserialize};
 
 /// Definition of parameters needed to implement and optimize a Merkle Tree whose nodes and leaves
 /// are Field elements. The trait is generic with respect to the arity of the Merkle Tree.
-pub trait FieldBasedMerkleTreeParameters: 'static + Clone {
+pub trait FieldBasedMerkleTreeParameters: 'static + Clone + Default {
     type Data: Field; /// Actually unnecessary, but simplifies the overall design
     type H: FieldBasedHash<Data = Self::Data>;
     /// The arity of the Merkle Tree

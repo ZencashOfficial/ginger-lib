@@ -49,7 +49,7 @@ pub trait SignatureScheme {
     ) -> Result<Self::Signature, Error>;
 }
 
-pub trait FieldBasedSignatureScheme {
+pub trait FieldBasedSignatureScheme: Default {
 
     type Data: Field;
     type PublicKey: FromBytes + FromBytesChecked + ToBytes + Hash + Eq + Copy +

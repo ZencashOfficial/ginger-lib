@@ -301,6 +301,14 @@ FieldBasedSchnorrSignatureScheme<F, G, H>
     fn keyverify(pk: &Self::PublicKey) -> bool { pk.is_valid() }
 }
 
+impl<F: PrimeField, G: ProjectiveCurve + ToConstraintField<F>, H: FieldBasedHash<Data = F>> Default for
+FieldBasedSchnorrSignatureScheme<F, G, H>
+{
+    fn default() -> Self{
+        Self{ _field: PhantomData, _hash: PhantomData, _group: PhantomData }
+    }
+}
+
 #[cfg(test)]
 mod test {
     use algebra::curves::{

@@ -32,7 +32,7 @@ use criterion::{
 use rand_xorshift::XorShiftRng;
 use rand::SeedableRng;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 struct MNT4753FieldBasedMerkleTreeParams;
 impl FieldBasedMerkleTreeParameters for MNT4753FieldBasedMerkleTreeParams {
     type Data = MNT4753Fr;
@@ -47,7 +47,7 @@ impl BatchFieldBasedMerkleTreeParameters for MNT4753FieldBasedMerkleTreeParams {
 
 type MNT4PoseidonMHT = FieldBasedOptimizedMHT<MNT4753FieldBasedMerkleTreeParams>;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 struct MNT6753FieldBasedMerkleTreeParams;
 impl FieldBasedMerkleTreeParameters for MNT6753FieldBasedMerkleTreeParams {
     type Data = MNT6753Fr;
