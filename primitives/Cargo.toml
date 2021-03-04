@@ -27,6 +27,7 @@ digest = { version = "0.7", optional = true }
 blake2 = { version = "0.7", optional = true }
 
 rand = { version = "0.7" }
+rand_chacha = { version = "0.2.0" }
 derivative = "1"
 rayon = "1"
 hex = "0.4.0"
@@ -53,6 +54,7 @@ tweedle = ["algebra/tweedle"]
 
 [dev-dependencies]
 algebra = { git = "https://github.com/HorizenOfficial/ginger-lib", branch = "algebra_ocl", features = ["edwards_sw6", "jubjub", "sw6", "bls12_377"] }
+algebra-utils = { path = "../algebra-utils", features = ["dev"] }
 primitives = { path = "../primitives", features = ["mnt4_753", "mnt6_753", "bn_382", "tweedle"] }
 
 criterion = "0.3"
@@ -101,3 +103,8 @@ name = "poseidon_mht"
 path = "benches/crypto_primitives/poseidon_mht.rs"
 harness = false
 required-features = ["merkle_tree", "mnt4_753", "mnt6_753"]
+
+[[bench]]
+name = "poseidon_comparison"
+path = "benches/crypto_primitives/poseidon_bench.rs"
+harness = false
