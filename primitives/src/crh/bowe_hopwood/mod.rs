@@ -42,6 +42,8 @@ impl<G: Group, W: PedersenWindow> BoweHopwoodPedersenCRH<G, W> {
     }
 }
 
+use algebra::biginteger::BigInteger320;
+
 impl<G: Group, W: PedersenWindow> FixedLengthCRH for BoweHopwoodPedersenCRH<G, W> {
     const INPUT_SIZE_BITS: usize = PedersenCRH::<G, W>::INPUT_SIZE_BITS;
     type Output = G;
@@ -49,9 +51,12 @@ impl<G: Group, W: PedersenWindow> FixedLengthCRH for BoweHopwoodPedersenCRH<G, W
 
     fn setup<R: Rng>(rng: &mut R) -> Result<Self::Parameters, Error> {
         fn calculate_num_chunks_in_segment<F: PrimeField>() -> usize {
-            let upper_limit = F::modulus_minus_one_div_two();
+            let upper_limit = BigInteger320::from_bits(F::modulus_minus_one_div_two().to_bits().as_slice());
             let mut c = 0;
-            let mut range = F::BigInt::from(2_u64);
+            let mut range = BigInteger320::from(2_u64);//F::BigInt::from(2_u64);
+
+            println!("Upper limit: {:?}", upper_limit);
+
             while range < upper_limit {
                 range.muln(4);
                 c += 1;
@@ -60,7 +65,9 @@ impl<G: Group, W: PedersenWindow> FixedLengthCRH for BoweHopwoodPedersenCRH<G, W
             c
         }
 
+        println!("Calculating MAX NUM CHUNKS...");
         let maximum_num_chunks_in_segment = calculate_num_chunks_in_segment::<G::ScalarField>();
+        println!("MAX NUM CHUNKS: {}", maximum_num_chunks_in_segment);
         if W::WINDOW_SIZE > maximum_num_chunks_in_segment {
             return Err(format!(
                 "Bowe-Hopwood hash must have a window size resulting in scalars < (p-1)/2, \
