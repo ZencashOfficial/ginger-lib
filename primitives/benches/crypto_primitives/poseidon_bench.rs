@@ -72,7 +72,7 @@ mod bowe_hopwood {
 
     impl PedersenWindow for BenchmarkWindow {
         const WINDOW_SIZE: usize = 64;
-        const NUM_WINDOWS: usize = 21846;
+        const NUM_WINDOWS: usize = 21846; // to serve a bitvector of max size 2^22 bits.
     }
 }
 
@@ -225,7 +225,7 @@ pub fn benchmark(c: &mut Criterion) {
         });
 
         // BOWE HOPWOOD BENCHMARK
-        group.bench_with_input(BenchmarkId::new("BOWE HOPWOOD - 2^", pow), &pow, |b, pow| {
+        group.bench_with_input(BenchmarkId::new("BOWE HOPWOOD - Tweedle FE 2^", pow), &pow, |b, pow| {
             b.iter_batched(|| {
 
                 let size = (1 << *pow) / 8;
