@@ -222,6 +222,20 @@ impl FromBytes for u64 {
     }
 }
 
+impl ToBytes for usize {
+    #[inline]
+    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        writer.write_u64::<LittleEndian>(*self as u64)
+    }
+}
+
+impl FromBytes for usize {
+    #[inline]
+    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
+        Ok(reader.read_u64::<LittleEndian>()? as usize)
+    }
+}
+
 impl ToBytes for () {
     #[inline]
     fn write<W: Write>(&self, _writer: W) -> IoResult<()> {
@@ -233,6 +247,24 @@ impl FromBytes for () {
     #[inline]
     fn read<R: Read>(_bytes: R) -> IoResult<Self> {
         Ok(())
+    }
+}
+
+impl<T1: ToBytes, T2: ToBytes> ToBytes for (T1, T2) {
+    #[inline]
+    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.0.write(&mut writer)?;
+        self.1.write(&mut writer)?;
+        Ok(())
+    }
+}
+
+impl<T1: FromBytes, T2: FromBytes> FromBytes for (T1, T2) {
+    #[inline]
+    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
+        let i1 = T1::read(&mut reader)?;
+        let i2 = T2::read(&mut reader)?;
+        Ok((i1, i2))
     }
 }
 
@@ -255,13 +287,49 @@ impl FromBytes for bool {
     }
 }
 
+impl<T: ToBytes> ToBytes for Option<T> {
+    #[inline]
+    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.is_some().write(&mut writer)?;
+        if self.is_some() {
+            self.as_ref().unwrap().write(&mut writer)?;
+        }
+        Ok(())
+    }
+}
+
+impl<T: FromBytes> FromBytes for Option<T> {
+    #[inline]
+    fn read<R: Read>(mut reader: R) -> IoResult<Option<T>> {
+        let exists = bool::read(&mut reader)?;
+        Ok(if exists {
+            Some(T::read(&mut reader)?)
+        } else {
+            None
+        })
+    }
+}
+
 impl<T: ToBytes> ToBytes for Vec<T> {
     #[inline]
     fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        (self.len() as u64).write(&mut writer)?;
         for item in self {
             item.write(&mut writer)?;
         }
         Ok(())
+    }
+}
+
+impl<T: FromBytes> FromBytes for Vec<T> {
+    #[inline]
+    fn read<R: Read>(mut reader: R) -> IoResult<Vec<T>> {
+        let mut res = vec![];
+        let count = u64::read(&mut reader)?;
+        for _ in 0..count {
+            res.push(T::read(&mut reader)?);
+        }
+        Ok(res)
     }
 }
 
@@ -282,14 +350,14 @@ impl<'a, T: 'a + ToBytes> ToBytes for &'a T {
     }
 }
 
-impl FromBytes for Vec<u8> {
-    #[inline]
-    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
-        let mut buf = Vec::new();
-        let _ = reader.read_to_end(&mut buf)?;
-        Ok(buf)
-    }
-}
+// impl FromBytes for Vec<u8> {
+//     #[inline]
+//     fn read<R: Read>(mut reader: R) -> IoResult<Self> {
+//         let mut buf = Vec::new();
+//         let _ = reader.read_to_end(&mut buf)?;
+//         Ok(buf)
+//     }
+// }
 
 #[cfg(test)]
 mod test {
