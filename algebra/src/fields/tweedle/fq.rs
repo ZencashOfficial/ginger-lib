@@ -1,3 +1,4 @@
+/// Parameters for the base field of the Tweedle Dee curve 
 use crate::{
     biginteger::BigInteger256 as BigInteger,
     fields::{Fp256, Fp256Parameters, FpParameters},
@@ -12,7 +13,8 @@ impl Fp256Parameters for FqParameters {}
 impl FpParameters for FqParameters {
     type BigInt = BigInteger;
 
-    // 28948022309329048855892746252171976963322203655954433126947083963168578338817
+    // q= 2^254 + 4707489544292117082687961190295928833
+    //  =28948022309329048855892746252171976963322203655954433126947083963168578338817
     const MODULUS: BigInteger = BigInteger([
         0x842cafd400000001,
         0x38aa127696286c9,
@@ -20,6 +22,7 @@ impl FpParameters for FqParameters {
         0x4000000000000000,
     ]);
 
+    // 2^256 mod q
     const R: BigInteger = BigInteger([
         0x7379f083fffffffd,
         0xf5601c89c3d86ba3,
@@ -62,6 +65,7 @@ impl FpParameters for FqParameters {
 
     const TWO_ADICITY: u32 = 34;
 
+    // 7800604369215000193760722976830082688947948669085139141819171589611499378668
     const ROOT_OF_UNITY: BigInteger = BigInteger([
         0xb5373d390b45cde8,
         0x1437982d8ca321e6,

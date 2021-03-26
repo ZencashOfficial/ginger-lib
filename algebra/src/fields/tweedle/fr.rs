@@ -1,3 +1,4 @@
+/// Parameters for the base field of the Tweedle Dum curve (i.e. the scalar field of the Tweedle Dee)
 use crate::{
     biginteger::BigInteger256 as BigInteger,
     fields::{FpParameters, Fp256, Fp256Parameters},
@@ -11,26 +12,28 @@ impl Fp256Parameters for FrParameters {}
 impl FpParameters for FrParameters {
     type BigInt = BigInteger;
 
-    // 28948022309329048855892746252171976963322203655955319056773317069363642105857
+    // q = 2^254 + 4707489545178046908921067385359695873
+    //   = 28948022309329048855892746252171976963322203655955319056773317069363642105857
     const MODULUS: BigInteger = BigInteger([
-        11619397960441266177,
-        255193519591741881,
-        0,
-        4611686018427387904,
+        0xa14064e200000001,
+        0x38aa1276c3f59b9,
+        0x0,
+        0x4000000000000000,
     ]);
 
+    // R = 2^256 mod q
     const R: BigInteger = BigInteger([
-        2035294266095304701,
-        17681163514934325971,
-        18446744073709551615,
-        4611686018427387903,
+        0x1c3ed159fffffffd,
+        0xf5601c89bb41f2d3,
+        0xffffffffffffffff,
+        0x3fffffffffffffff,
     ]);
 
     const R2: BigInteger = BigInteger([
-        2885853259929485328,
-        10494584067553537908,
-        15959394653775906393,
-        56485833754855950,
+        0x280c9c4000000010,
+        0x91a4409b5400af74,
+        0xdd7b28e19094c659,
+        0xc8ad9107ccca0e
     ]);
 
     const MODULUS_MINUS_ONE_DIV_TWO: BigInteger = BigInteger([
@@ -48,10 +51,10 @@ impl FpParameters for FrParameters {
 
     // GENERATOR = 5
     const GENERATOR: BigInteger = BigInteger([
-        592367636130562029,
-        13598067201466455865,
-        18446744073709551615,
-        4611686018427387903,
+        0x8388339ffffffed,
+        0xbcb60a12f74c5739,
+        0xffffffffffffffff,
+        0x3fffffffffffffff
     ]);
 
     const MODULUS_BITS: u32 = 255;
@@ -60,6 +63,7 @@ impl FpParameters for FrParameters {
 
     const TWO_ADICITY: u32 = 33;
 
+    // 19400540447233431299362144148489679194329882900596822232901065060541459347406
     const ROOT_OF_UNITY: BigInteger = BigInteger([
         0xa189b4c6deb5f0b4,
         0x84b1839059d394b6,
