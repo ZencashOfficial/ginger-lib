@@ -10,9 +10,9 @@ use algebra::field_new;
 
 #[derive(Clone)]
 /// x^5-POSEIDON-128 parameters for scalar field of the Tweedle Dee (= Fr).
-/// The number of rounds are from their [paper](https://eprint.iacr.org/2019/458.pdf), the 
-/// round constants and MDS matrix are generated using the sage script from 
-/// [IAIK](https://extgit.iaik.tugraz.at/krypto/hadeshash), commit 7ecf9a7d4f37e777ea27e4c4d379443151270563. 
+/// 
+/// The number of rounds are computed by ./evidence/calc_round_numbers.py, round constants and matrix 
+/// are generated using the script ./evidence/generate_parameters_grain.
 pub struct FrPoseidonParameters;
 
 impl FieldBasedHashParameters for FrPoseidonParameters {
