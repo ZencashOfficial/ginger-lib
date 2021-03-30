@@ -10,9 +10,10 @@ use algebra::field_new;
 
 #[derive(Clone)]
 /// x^5-POSEIDON-128 parameters for scalar field of the Tweedle Dum (=the Tweedle Dee Fq ).
-/// 
-/// The number of rounds are computed by ./evidence/calc_round_numbers.py, round constants and matrix 
-/// are generated using the script ./evidence/generate_parameters_grain.
+// 
+// The number of rounds are from the [Poseidon paper](https://eprint.iacr.org/2019/458),
+// round constants as well as MDS matrix are generated using the script 
+// ./evidence/generate_parameters_grain.
 pub struct FqPoseidonParameters;
 
 impl FieldBasedHashParameters for FqPoseidonParameters {

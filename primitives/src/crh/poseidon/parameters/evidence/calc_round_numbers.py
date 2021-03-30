@@ -14,7 +14,7 @@ def sat_inequiv_alpha(p, t, R_F, R_P, alpha, M):
         #R_F_3 = ((log(2, alpha) / float(2)) * min(n, M)) - R_P # Groebner 1
         R_F_3 = 1 + (log(2, alpha) * min(M/float(3), log(p, 2)/float(2))) - R_P # Groebner 1
         R_F_4 = t - 1 + min((log(2, alpha) * M) / float(t+1), ((log(2, alpha)*log(p, 2)) / float(2))) - R_P # Groebner 2
-        #R_F_5 = ((1.0/(2*log((alpha**alpha)/float((alpha-1)**(alpha-1)), 2))) * min(n, M) + t - 2 - R_P) / float(t - 1) # Groebner 3
+        # R_F_5 = ((1.0/(2*log((alpha**alpha)/float((alpha-1)**(alpha-1)), 2))) * min(n, M) + t - 2 - R_P) / float(t - 1) # Groebner 3
         R_F_max = max(ceil(R_F_1), ceil(R_F_2), ceil(R_F_3), ceil(R_F_4))
         return (R_F >= R_F_max)
     elif alpha == (-1):
@@ -106,8 +106,22 @@ def print_latex_table_combinations(combinations, alpha, security_margin):
 #print(calc_final_numbers_fixed(Crypto.Util.number.getPrime(64), 24, 3, 128, True))
 
 # MNT4-753 scalar field characteristic
-prime = 0x1c4c62d92c41110229022eee2cdadb7f997505b8fafed5eb7e8f96c97d87307fdb925e8a0ed8d99d124d9a15af79db26c5c28c859a99b3eebca9429212636b9dff97634993aa4d6c381bc3f0057974ea099170fa13a4fd90776e240000001
-print(calc_final_numbers_fixed(prime, 3, -1, 128, True))
-print(calc_final_numbers_fixed(prime, 3, -1, 128, False))
+# prime = 0x1c4c62d92c41110229022eee2cdadb7f997505b8fafed5eb7e8f96c97d87307fdb925e8a0ed8d99d124d9a15af79db26c5c28c859a99b3eebca9429212636b9dff97634993aa4d6c381bc3f0057974ea099170fa13a4fd90776e240000001
+# print(calc_final_numbers_fixed(prime, 3, -1, 128, True))
+# print(calc_final_numbers_fixed(prime, 3, -1, 128, False))
 
+# MNT6-753 scalar field characteristic
+# prime = 0x1c4c62d92c41110229022eee2cdadb7f997505b8fafed5eb7e8f96c97d87307fdb925e8a0ed8d99d124d9a15af79db117e776f218059db80f0da5cb537e38685acce9767254a4638810719ac425f0e39d54522cdd119f5e9063de245e8001 
+# print(calc_final_numbers_fixed(prime, 3, -1, 128, True))
+# print(calc_final_numbers_fixed(prime, 3, -1, 128, False))
+
+# BN-382 scalar field characteristic
+# prime = 0x2404893fdad8878e71503c69b09dbf88b48a3614289b09012012246d2242412000000001800c18180000000000000001
+# print(calc_final_numbers_fixed(prime, 3, 5, 128, True))
+# print(calc_final_numbers_fixed(prime, 3, 5, 128, False))
+
+# BN-382 dual scalar field characteristic
+# prime = 0x2404893fdad8878e71503c69b09dbf88b48a3614289b0901801830918303018000000001800c18180000000000000001
+# print(calc_final_numbers_fixed(prime, 3, 5, 128, True))
+# print(calc_final_numbers_fixed(prime, 3, 5, 128, False))
 

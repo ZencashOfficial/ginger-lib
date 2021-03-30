@@ -21,7 +21,13 @@ from sage.rings.polynomial.polynomial_gf2x import GF2X_BuildIrred_list
 # GF(p), alpha=5, N = 255*3, n = 255, t = 3, R_F = 8, R_P = 57:
 # sage generate_parameters_grain.sage 1 0 255 3 8 57 0x40000000000000000000000000000000038aa127696286c9842cafd400000001 > ParametersDumFr.log
 
+# BN-382 scalar field
+# GF(p), alpha=5, N = 382*3, n = 382, t = 3, R_F = 8, R_P = 56:
+# sage generate_parameters_grain.sage 1 0 382 3 8 56 0x2404893fdad8878e71503c69b09dbf88b48a3614289b09012012246d2242412000000001800c18180000000000000001 > ParametersBN382.log
 
+# BN-382 dual curve scalar field
+# GF(p), alpha=5, N = 382*3, n = 382, t = 3, R_F = 8, R_P = 56:
+# sage generate_parameters_grain.sage 1 0 382 3 8 56 0x2404893fdad8878e71503c69b09dbf88b48a3614289b0901801830918303018000000001800c18180000000000000001 > ParametersBN382dual.log
 
 if len(sys.argv) < 7:
     print("Usage: <script> <field> <s_box> <field_size> <num_cells> <R_F> <R_P> (<prime_number_hex>)")

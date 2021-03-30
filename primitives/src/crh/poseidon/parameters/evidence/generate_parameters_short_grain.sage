@@ -12,7 +12,7 @@ from sage.rings.polynomial.polynomial_gf2x import GF2X_BuildIrred_list
 # GF(p)= MTN4-753 Fr, x^(-1), N = 2259, n = 753, t = 3, R_F = 8, R_P = 63:
 # sage generate_parameters_short_grain.sage 1 1 753 3 8 63 0x1c4c62d92c41110229022eee2cdadb7f997505b8fafed5eb7e8f96c97d87307fdb925e8a0ed8d99d124d9a15af79db26c5c28c859a99b3eebca9429212636b9dff97634993aa4d6c381bc3f0057974ea099170fa13a4fd90776e240000001 > ParametersMNT4Fr.log
 # GF(p)= MTN6-753 Fr, x^(-1), N = 2259, n = 753, t = 3, R_F = 8, R_P = 63:
-sage generate_parameters_short_grain.sage 1 1 753 3 8 63 0x1c4c62d92c41110229022eee2cdadb7f997505b8fafed5eb7e8f96c97d87307fdb925e8a0ed8d99d124d9a15af79db117e776f218059db80f0da5cb537e38685acce9767254a4638810719ac425f0e39d54522cdd119f5e9063de245e8001 > ParametersMNT6Fr.log
+# sage generate_parameters_short_grain.sage 1 1 753 3 8 63 0x1c4c62d92c41110229022eee2cdadb7f997505b8fafed5eb7e8f96c97d87307fdb925e8a0ed8d99d124d9a15af79db117e776f218059db80f0da5cb537e38685acce9767254a4638810719ac425f0e39d54522cdd119f5e9063de245e8001 > ParametersMNT6Fr.log
 
 if len(sys.argv) < 7:
     print("Usage: <script> <field> <s_box> <field_size> <num_cells> <R_F> <R_P> (<prime_number_hex>)")

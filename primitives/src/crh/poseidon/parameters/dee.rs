@@ -21,7 +21,11 @@ impl FieldBasedHashParameters for FrPoseidonParameters {
     const R: usize = 2;  // The rate of the hash function
 }
 
-// x^5-POSEIDON-128 parameters for the base field of the Tweedle Dum curve
+// x^5-POSEIDON-128 parameters for the scalar field of the Tweedle Dee curve
+//
+// The number of rounds are from the [Poseidon paper](https://eprint.iacr.org/2019/458),
+// round constants as well as MDS matrix are generated using the script 
+// ./evidence/generate_parameters_grain.
 impl PoseidonParameters for FrPoseidonParameters {
 
     const T: usize = 3; // Size of the internal state (in field elements)
