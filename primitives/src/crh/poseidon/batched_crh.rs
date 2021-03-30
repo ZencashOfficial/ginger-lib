@@ -77,11 +77,10 @@ impl<F, P, SB> PoseidonBatchHash<F, P, SB>
 
         // Full rounds
         // Last round does not contain the matrix mix
-        for _i in 0..(P::R_F - 1) {
+        for _i in 0..P::R_F {
             Self::poseidon_full_round(vec_state, &mut round_cst_idx, false);
         }
 
-        Self::poseidon_full_round(vec_state, &mut round_cst_idx, true);
     }
 }
 
@@ -137,8 +136,9 @@ impl<F, P, SB> BatchFieldBasedHash for PoseidonBatchHash<F, P, SB>
                 state[k][j] += &input_array[input_idx];
                 input_idx += 1;
             }
+            // we do not use domain separation for now
             // constant for m-ary Merkle tree
-            state[k][P::R] += &P::C2;
+            //state[k][P::R] += &P::C2;
         }
 
         // Calculate the chunk size to split the state vector
@@ -199,8 +199,9 @@ impl<F, P, SB> BatchFieldBasedHash for PoseidonBatchHash<F, P, SB>
                 state[k][j] += &input_array[input_idx];
                 input_idx += 1;
             }
+            // we do not use domain separation for now
             // constant for m-ary Merkle tree
-            state[k][P::R] += &P::C2;
+            // state[k][P::R] += &P::C2;
         }
 
         // Calculate the chunk size to split the state vector
