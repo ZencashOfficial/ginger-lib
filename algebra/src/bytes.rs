@@ -222,20 +222,6 @@ impl FromBytes for u64 {
     }
 }
 
-impl ToBytes for usize {
-    #[inline]
-    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        writer.write_u64::<LittleEndian>(*self as u64)
-    }
-}
-
-impl FromBytes for usize {
-    #[inline]
-    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
-        Ok(reader.read_u64::<LittleEndian>()? as usize)
-    }
-}
-
 impl ToBytes for () {
     #[inline]
     fn write<W: Write>(&self, _writer: W) -> IoResult<()> {
@@ -313,23 +299,10 @@ impl<T: FromBytes> FromBytes for Option<T> {
 impl<T: ToBytes> ToBytes for Vec<T> {
     #[inline]
     fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        (self.len() as u64).write(&mut writer)?;
         for item in self {
             item.write(&mut writer)?;
         }
         Ok(())
-    }
-}
-
-impl<T: FromBytes> FromBytes for Vec<T> {
-    #[inline]
-    fn read<R: Read>(mut reader: R) -> IoResult<Vec<T>> {
-        let mut res = vec![];
-        let count = u64::read(&mut reader)?;
-        for _ in 0..count {
-            res.push(T::read(&mut reader)?);
-        }
-        Ok(res)
     }
 }
 
