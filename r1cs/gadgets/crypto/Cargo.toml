@@ -36,7 +36,6 @@ rayon = "1"
 
 [features]
 commitment = ["primitives/commitment", "prf"]
-merkle_tree = ["primitives/merkle_tree"]
 prf = ["digest", "blake2", "primitives/prf"]
 signature = ["primitives/signature", "digest"]
 vrf = ["primitives/vrf"]
