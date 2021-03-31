@@ -99,7 +99,7 @@ def print_latex_table_combinations(combinations, alpha, security_margin):
 # Single tests
 # print calc_final_numbers_fixed(Crypto.Util.number.getPrime(64), 24, 3, 128, True)
 # print calc_final_numbers_fixed(Crypto.Util.number.getPrime(253), 6, -1, 128, True)
-#print(calc_final_numbers_fixed(Crypto.Util.number.getPrime(255), 3, 5, 128, True))
+# print(calc_final_numbers_fixed(Crypto.Util.number.getPrime(255), 3, 5, 128, True))
 #print(calc_final_numbers_fixed(Crypto.Util.number.getPrime(255), 6, 5, 128, True))
 #print(calc_final_numbers_fixed(Crypto.Util.number.getPrime(254), 3, 5, 128, True))
 #print(calc_final_numbers_fixed(Crypto.Util.number.getPrime(254), 6, 5, 128, True))
@@ -125,3 +125,12 @@ def print_latex_table_combinations(combinations, alpha, security_margin):
 # print(calc_final_numbers_fixed(prime, 3, 5, 128, True))
 # print(calc_final_numbers_fixed(prime, 3, 5, 128, False))
 
+# Tweedle dee scalar field characteristic
+#prime = 0x40000000000000000000000000000000038aa1276c3f59b9a14064e200000001
+#print(calc_final_numbers_fixed(prime, 3, 5, 128, True))
+#print(calc_final_numbers_fixed(prime, 3, 5, 128, False))
+
+# Tweedle dum scalar field characteristic
+#prime = 0x40000000000000000000000000000000038aa127696286c9842cafd400000001
+#print(calc_final_numbers_fixed(prime, 3, 5, 128, True))
+#print(calc_final_numbers_fixed(prime, 3, 5, 128, False))
