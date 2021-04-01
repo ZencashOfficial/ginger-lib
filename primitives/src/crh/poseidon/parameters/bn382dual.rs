@@ -16,10 +16,10 @@ impl FieldBasedHashParameters for BN382FqPoseidonParameters {
     const R:usize = 2;  // The rate of the hash function
 }
 
-/// x^5-POSEIDON-128 parameters for scalar field (= Fr) of the BN382 dual curve.
-/// 
-/// The number of rounds are computed by ./evidence/calc_round_numbers.py, round constants and matrix 
-/// are generated using the script ./evidence/generate_parameters_grain.
+// x^5-POSEIDON-128 parameters for scalar field (= Fr) of the BN382 dual curve.
+// 
+// The number of rounds are computed by ./evidence/calc_round_numbers.py, round constants and matrix 
+// are generated using the script ./evidence/generate_parameters_grain.
 impl PoseidonParameters for BN382FqPoseidonParameters {
 
     const T:usize = 3;  // Size of the internal state (in field elements)

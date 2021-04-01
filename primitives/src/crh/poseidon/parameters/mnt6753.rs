@@ -21,11 +21,11 @@ impl FieldBasedHashParameters for MNT6753PoseidonParameters {
     const R: usize = 2;  // The rate of the hash function
 }
 
-/// x^{-1}-POSEIDON-128 parameters for scalar field Fr of Coda's MNT6-753, with an MDS matrix supporting 
-/// short Montgomery multiplication. 
-/// 
-/// The number of rounds are computed by ./evidence/calc_round_numbers.py, round constants and matrix 
-/// are generated using the script ./evidence/generate_parameters_short_grain.
+// x^{-1}-POSEIDON-128 parameters for scalar field Fr of Coda's MNT6-753, with an MDS matrix supporting 
+// short Montgomery multiplication. 
+// 
+// The number of rounds are computed by ./evidence/calc_round_numbers.py, round constants and matrix 
+// are generated using the script ./evidence/generate_parameters_short_grain.
 impl PoseidonParameters for MNT6753PoseidonParameters {
 
     const T: usize = 3;

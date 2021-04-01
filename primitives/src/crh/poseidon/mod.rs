@@ -500,53 +500,53 @@ mod test {
         // [IAIK](https://extgit.iaik.tugraz.at/krypto/hadeshash), commit 7ecf9a7d4f37e777ea27e4c4d379443151270563. 
         let test_ins = vec![
             vec![tweedleFr::zero(); 3],
-            vec![ 
-                tweedleFr::new(BigInteger([0x4b6843cb99b405a7,0x9144f963e6be5b2f,0xd6cd171f511f42ae,0x3236f7bf7169c287,])),
-                tweedleFr::new(BigInteger([0x5b3a70c1157f1212,0x12dd719b00c4df79,0xbd19cef4c96d3866,0x30ee9801b0360968,])),
-                tweedleFr::new(BigInteger([0x8bc11448cb71832,0x1d9f276875cc842a,0x42fd3aabdab2b6ea,0xc0424292f53f9bd,])),
+            vec![
+                tweedleFr::new(BigInteger([0x2d9ced12b8448fa3,0xe47617895bcb1def,0xdb309341af8fc9bc,0x3518ed3d596d9b3d,])),
+                tweedleFr::new(BigInteger([0x2f00b53bfb408372,0x6de08091d9994983,0x30787444ac8639a3,0x18b1a8fe589e66ad,])),
+                tweedleFr::new(BigInteger([0xbbff40a91825c30d,0xa82ca4dd45ed43cd,0x3ce8daf6c9c21029,0x10c0f7735f33aa7a,])),
             ],
             vec![
-                tweedleFr::new(BigInteger([0x6041a866e4558c17,0x3a786f845d979e7f,0x5d6b1332c8f927b0,0x16fbd749aad1f957,])),
-                tweedleFr::new(BigInteger([0x8f35db97f2816fa3,0x80d16d81b03fdada,0x1379a31c4728cc76,0x38be09a3a66ff4c2,])),
-                tweedleFr::new(BigInteger([0xe566ac71952ead83,0x37b7521f0ecab296,0x7ec918e8f984ab0b,0x12c52d236863265b,])),
+                tweedleFr::new(BigInteger([0x5f37a0bd77589e1f,0x5473621f06e318b0,0x134c69d294364fc2,0x17ce475fc0918e98,])),
+                tweedleFr::new(BigInteger([0xf997aedfd435a00c,0xff8244711a05ace4,0x111f3729665dfce3,0x12e06c5d75a20f44,])),
+                tweedleFr::new(BigInteger([0x4fe219488f716f3b,0x47994803d7aa1b4b,0x83c0b9401250e3df,0xc55e3e5129040af,])),
             ],
             vec![
-                tweedleFr::new(BigInteger([0x4c81a064348dd3e7,0xf0a3dca1cdacff2b,0xd364cf53239ffde,0x26d11588ffb19887,])),
-                tweedleFr::new(BigInteger([0xfdfe267f262ca737,0x91eaa0df803a9dc1,0x254ed4b68d1fd2cd,0x20799470abb1adf7,])),
-                tweedleFr::new(BigInteger([0xabf88cf4a0dfef16,0x659d666776f371e5,0xf52159ce419ae46e,0x231a73b9cd584d51,])),
+                tweedleFr::new(BigInteger([0x1c88b7f17d83e522,0x63bbb3d972a8a79,0x3cd3b269e9148e61,0x107064754c2219f6,])),
+                tweedleFr::new(BigInteger([0xd98347c19ef61123,0x8c2f919a2ce03104,0x19a6ebeb17c8d50b,0x211359dab98e662b,])),
+                tweedleFr::new(BigInteger([0x6fca9aeca36a6a90,0x9a5901d4db4cb38b,0xb7a625b6fa9c1d25,0x1c0c5a9e4863c446,])),
             ],
             vec![
-                tweedleFr::new(BigInteger([0x375748ce5dce48f3,0xd056583705f71847,0x9ee4a117c59be931,0x11480580568757d7,])),
-                tweedleFr::new(BigInteger([0x74e3326574f2c3cf,0xaaee18cf2c9d6835,0x433459495ad3cd5,0x16187918f8142b98,])),
-                tweedleFr::new(BigInteger([0xa30844cb51aa9776,0xef0e1428779ee89a,0x36745453414361b6,0xb5034593923cb50,])),
+                tweedleFr::new(BigInteger([0x52cc4aa39d8838b8,0x412ba25c63120ebb,0x667515874f0074d6,0x1d2f166897ea99e,])),
+                tweedleFr::new(BigInteger([0x466265a678233c51,0xd6b41807e24ee39f,0xee5874453e9c291c,0x1b0bbd1b8e79ea9d,])),
+                tweedleFr::new(BigInteger([0x49d2b1885d136bf6,0xfebba4a8e8c0595b,0xa5b4ca600f485e66,0x27c2b78d22e855c0,])),
             ],
         ];
         
         let test_outs = vec![
             vec![
-                tweedleFr::new(BigInteger([0x24474df3c64b6467,0xc0c46698dadb69fb,0x89479fdaa2d4a3d3,0x1038e2503c010653])),
-                tweedleFr::new(BigInteger([0xdbd0f46c618cbe3f,0xd4c1353c7911ca30,0xc7d9c14b932bea56,0x3e8a462618bedbfc])),
-                tweedleFr::new(BigInteger([0x24022ec1dbfc566b,0xed45883272d605ba,0x147a173707407b8b,0xebc6f1edf47ed55])),
+                tweedleFr::new(BigInteger([0x85614442a60ac11a,0x55a43ca8180d2e08,0x43f61ff197080ac4,0x19d87eb89a42aaf1,])),
+                tweedleFr::new(BigInteger([0xa2f6b5a9a16d3790,0xc947563b131a126c,0x52c19607bb4b6640,0xc4604a460df1c57,])),
+                tweedleFr::new(BigInteger([0x7d8f3c1679a9cbe2,0xb09fdc38ee15fe77,0x810720bf23be8578,0x2ab876d1a0abfa95,])),
             ],
             vec![
-                tweedleFr::new(BigInteger([0x20fa7060162fe3fc,0x1eac682e3c5faa3c,0x9c5bceb01d30f9ba,0x2b3eabe68941720,])),
-                tweedleFr::new(BigInteger([0x7c1779b6127cf06c,0x9f32d6ad1f28799e,0x4731c51b69013a3a,0x3d1ed3edc77b97ae,])),
-                tweedleFr::new(BigInteger([0xe952f46225b93cf7,0x4ec21947f91d9ca7,0xcd24b17ef0c76ae2,0x23e7221b28b210f3,])),
+                tweedleFr::new(BigInteger([0xc4a37b8664180077,0xd8390d652933725e,0xaafa5d29eb656edb,0x296682761320f48c,])),
+                tweedleFr::new(BigInteger([0x2fffbed47e729020,0x6d243b1d399f42dd,0x2bcea2d0461856d7,0x2fc6f9c7c62a5088,])),
+                tweedleFr::new(BigInteger([0x8b617097039cbf5f,0xc3e9594e65f53809,0x96f163d2a6e08e55,0x1283bbfbfafe0185,])),
             ],
             vec![
-                tweedleFr::new(BigInteger([0xcf79d1777224c062,0x52d39a745e1c3c6a,0xd941fc13d0c346be,0xb699418e5ef9834,])),
-                tweedleFr::new(BigInteger([0xe2396e61bfda0277,0xeaed6a4e968ea195,0x3f08907457a3236f,0x3c63cead78221117,])),
-                tweedleFr::new(BigInteger([0xe90a5898600235d9,0xaa897713652ae7b0,0xc5a256f19615f569,0x3bc13c2bfd63df7e,])),
+                tweedleFr::new(BigInteger([0xb0e21925172f0ba3,0x22bb8d3720914af7,0x31ee2b9a26424619,0x2184d5590df49e25,])),
+                tweedleFr::new(BigInteger([0x4f525fe270112fb8,0x59d975c2bc66f456,0x1740475c80005233,0x3f44acd2d334fee9,])),
+                tweedleFr::new(BigInteger([0xda02921fa73b4778,0xb9b7c2742272dbeb,0xb3491dacb990965c,0x3cffd4206f4264e,])),
             ],
             vec![
-                tweedleFr::new(BigInteger([0x66d425888381162f,0xc63132cb5028045b,0x53871f80990aedbc,0x363207508e5b631b,])),
-                tweedleFr::new(BigInteger([0xfe5d1e98b1530279,0x27c024f1831bc8e5,0x3d1cd5426dab4aee,0x82529e25a79f601,])),
-                tweedleFr::new(BigInteger([0xb0326dacb304b76e,0x28014ea114458515,0xee0838406e061d3b,0x16413d5dc81bd4e1,]))
+                tweedleFr::new(BigInteger([0x9a5d804c8f8980d7,0x60f4ba8f01fccce4,0x95428b68f3a9eba3,0x3108ed7e0636e1e7,])),
+                tweedleFr::new(BigInteger([0xf5e24f59c7e404d7,0xf4a10531d95222b1,0xb55cfa77a621836f,0x15f7c485bf9b2bf1,])),
+                tweedleFr::new(BigInteger([0xf65bd157052e1b45,0x180aa5b7e51b8a46,0xe451d510b5cf9dae,0x7cdd9f00493bc73,])),
             ],
             vec![
-                tweedleFr::new(BigInteger([0xd51f314c6d11765c,0xae73a2e659ab5842,0xe87e6d45db318fdf,0x2fc5b82cbe80b30e,])),
-                tweedleFr::new(BigInteger([0xb3f2983fa2e73b8c,0xf674add1d5cfba09,0x4e378c14f155766e,0x3ef85cc9fe99b0dd,])),
-                tweedleFr::new(BigInteger([0xf61caec9a1007cf8,0x81f1b58a6c336283,0x24b14f97c35bc880,0x398b61120ab4fcc,])),
+                tweedleFr::new(BigInteger([0x7c080f4b62e78aab,0xc6294e279a622677,0xcabd73efb2584d6d,0x10186a71cc08159e,])),
+                tweedleFr::new(BigInteger([0xdb3d4f4a63e1324d,0x6705ae25ff9b471f,0xccae1d131341f589,0x1b31cd963165eccc,])),
+                tweedleFr::new(BigInteger([0x9860019e6edc3f2f,0x14ca7a30bb1a5c36,0xf4e9f4abe3f7ef0c,0x143d7bf07e7f54c7,])),
             ],
         ];
 
@@ -563,54 +563,55 @@ mod test {
         // test vectors are computed on random input using the sage script of 
         // [IAIK](https://extgit.iaik.tugraz.at/krypto/hadeshash), commit 7ecf9a7d4f37e777ea27e4c4d379443151270563. 
         let test_ins = vec![
-            vec![tweedleFq::zero(); 3],
             vec![
-                tweedleFq::new(BigInteger([0xf442d87fbf3ecd8c,0x75c6ac589dfecc42,0x83effdb327a6dfef,0xbad6a789fe330dd,])),
-                tweedleFq::new(BigInteger([0xc3abc1cdf4935f44,0xda31dc8bb5c04e2e,0x3417d59cf717c1eb,0x361003499c842ef6,])),
-                tweedleFq::new(BigInteger([0x41792959d4240eec,0xeca34dfbd3be7ceb,0x96ab342287a71ec5,0x2cd32749a0efc9f3,])),
+               tweedleFq::zero(); 3
             ],
             vec![
-                tweedleFq::new(BigInteger([0x8a42a591ccdfea4f,0x7fac93729f624247,0x6e3610f78e23ee57,0x20e05d3a71be99b2,])),
-                tweedleFq::new(BigInteger([0x193bc9eb2db311b3,0xa11070475db1a67f,0xc44fc3968a8c8ddc,0x24d8ea97bb23fd7f,])),
-                tweedleFq::new(BigInteger([0x10b4ddca66c0b564,0xa8728f932bb40ee6,0xba11d94c27eabac6,0xd3a13af304669ac,])),
+                tweedleFq::new(BigInteger([0x530261dfc524611d,0xebde2e5e0c454577,0x31c9a2fd3288dbd8,0x22faf97cf0bfa8ed,])),
+                tweedleFq::new(BigInteger([0x25f47e32d936f0c0,0x9c88b0ffb8d56acc,0x3c1a4050825c76ac,0xf81aaaddfb679df,])),
+                tweedleFq::new(BigInteger([0x129cb322f4812820,0x5b218d2750d9cc33,0x5baa3f8af95e185b,0xf5713c92c9b59a5,])),
             ],
             vec![
-                tweedleFq::new(BigInteger([0x6c255f28b95bd1e6,0x69504c6efad8bdb7,0x8f1ad7644227b830,0x19939485311e6a40,])),
-                tweedleFq::new(BigInteger([0x55b0edfcd04e8978,0x53ebab97a87e54fb,0x677f2fc34fa46db3,0x26d2700a1a4bb573,])),
-                tweedleFq::new(BigInteger([0xdfc52a04cf954d1e,0x72113c3d0ce20967,0xb72c15b74381d6a0,0xb0819d8686c00f9,])),
+                tweedleFq::new(BigInteger([0x8c70fb5700e28179,0x58d04dff4aeb7baa,0x7d229f69585bbc4c,0x1a53f352bbb741f,])),
+                tweedleFq::new(BigInteger([0x983971f4bc40e955,0xf9c4aa245dc69370,0xc90afb10e865d7fa,0x25c68f3eda91e782,])),
+                tweedleFq::new(BigInteger([0x553902e820896d7e,0xea7238f532c5b890,0x66c31bc5cacadbb5,0x11fbf51d7acd7811,])),
             ],
             vec![
-                tweedleFq::new(BigInteger([0x723df3e990dca9d1,0xc92ae0972587d963,0xd90188b7354a2258,0xc0aa1bfc0aa6c97,])),
-                tweedleFq::new(BigInteger([0x446d4bab99ee5bff,0xdba6ba04335e124e,0x347790bc7c8eb68a,0x598e0584f1b2f97,])),
-                tweedleFq::new(BigInteger([0x1559a27f16b7abfc,0x164beb53557e0c40,0x3ff0f79d7fdb5c20,0xb362cb07a9be10f,])),
+                tweedleFq::new(BigInteger([0x8c5101f47ede0f2b,0xdde609c8ee90d5e9,0xf53611e4c9658d0b,0x9b8ad64dd287d37,])),
+                tweedleFq::new(BigInteger([0xe79daeebc658d0a,0x3019b7ed8cae3dd8,0xe4966f5f01879f27,0x2f1328f79025e70c,])),
+                tweedleFq::new(BigInteger([0x49ad0534394806ae,0x6ab073974f741a93,0x3e043b146513dfe5,0x29b158cd24e843e4,])),
+            ],
+            vec![
+                tweedleFq::new(BigInteger([0x3a410990938e76ed,0x4bd4f247c6c2215b,0xe815c6d61abfe6f9,0x94daa5bcfb9eb6f,])),
+                tweedleFq::new(BigInteger([0x3787fbb0c8dcfe1a,0xf67406e5daf43fae,0x7a5fc8f335f28767,0x18ff0f241943eec8,])),
+                tweedleFq::new(BigInteger([0xc72a940881085fd6,0x7096ba03e87353af,0x32decb002f5a4e83,0x492cc5ac858b06a,])),
             ],
         ];
-        
         let test_outs = vec![
             vec![
-                tweedleFq::new(BigInteger([0xb46ad2d321d1cefd, 0xbb1203b20c8e17ab, 0x7413c99cee248276, 0x10f3026539fe9e4])),
-                tweedleFq::new(BigInteger([0x3489f06408fb2c18, 0x668c8ed351f01494, 0x944306c7ff00efae, 0x1e58dc79b4fcae6c])),
-                tweedleFq::new(BigInteger([0xad5e1e851822cc05, 0x84d9ce927f225195, 0xdd4ab88f002f38dc, 0x19f0f4588a618830])),
+                tweedleFq::new(BigInteger([0x46ef7b471f039f54,0x7516283cc67869f2,0x561a6334ba7a39f1,0x293842a1538ac01b,])),
+                tweedleFq::new(BigInteger([0x6f10ff3b97995e3b,0x7650f70901d51a88,0x9f13555ea4caf2eb,0x14ed7f5560a0a1e1,])),
+                tweedleFq::new(BigInteger([0x815126351fe00f44,0x921a5f3ad5a6e83c,0x5f614c0b1bdaf5f7,0x7733c69a8892f0e,])),
             ],
             vec![
-                tweedleFq::new(BigInteger([0x123848facefaabd9,0xea61b7b6e2aba395,0xbac0891688b620bd,0x32cb9ee8f31699a7,])),
-                tweedleFq::new(BigInteger([0xcf43eb1a4b301683,0x3fd3d32fd2e7e72a,0x8ab0423c10f4691d,0xf1a94dcc8177c3f,])),
-                tweedleFq::new(BigInteger([0xd1a73d73eef198f,0x488a01394d86adf0,0xe08f1081d924d423,0xb9cff6f01f3ee6d,])),
+                tweedleFq::new(BigInteger([0xf39ca6429f499eb1,0x69657c642b509baa,0xbb0a2f6bb3a44a7b,0x1b0f054ee6b06ee5,])),
+                tweedleFq::new(BigInteger([0x9eab499dc61a7d92,0x457d1a9027e66bd4,0x74f80311cef652a5,0x2f0dc832cc821ed,])),
+                tweedleFq::new(BigInteger([0xe5949837b34cdd97,0x2fdd08e41ac8e36f,0xbfcb6768fbb981d,0x1521b70d21fc43fb,])),
             ],
             vec![
-                tweedleFq::new(BigInteger([0x27551948e97f0eb,0x84f7c9012be83f48,0x15e7b16a83d00ce8,0x36fccebf901a1145,])),
-                tweedleFq::new(BigInteger([0xc2e6b8fecab6bb12,0x1414ee62b4279c08,0x2fc8cf5ff3f57c39,0x3631f456f95d8003,])),
-                tweedleFq::new(BigInteger([0xee418c2224438111,0xa5fcfec23d9921fd,0x803975a67437d3ee,0x32c246f59e9ab177,])),
+                tweedleFq::new(BigInteger([0x21fb36a475c20033,0x6a938adf93ceda77,0xa05bc36806e89296,0x1cd7a0d468136dd3,])),
+                tweedleFq::new(BigInteger([0x6295c60c77022ca5,0x440a39652987ef94,0xbe9a8f921e81b656,0x3ade3ff16b820c56,])),
+                tweedleFq::new(BigInteger([0x62f4df55b1158a3d,0x6787fff1b51e08ed,0x47b46cd1709e9d30,0x3c4bbad805b5838c,])),
             ],
             vec![
-                tweedleFq::new(BigInteger([0x47f1223f3c2a4b1b,0xc8da66fcb1167479,0x2084bba52ace1e43,0xf17072bd192088e,])),
-                tweedleFq::new(BigInteger([0xcf104b943e3dbc6c,0x95082a7b3681ac7e,0x54bbe8f15ecca259,0x1d5381c193218ac0,])),
-                tweedleFq::new(BigInteger([0xa4614e0357afcbbb,0xb6bb7a99d65c17f1,0x39a3ed06dce8d892,0x3fde42201e273c66,])),
+                tweedleFq::new(BigInteger([0xf0b39ffa74b62183,0x9c87a4fea04e092a,0xe7ef4462efcf6492,0x1495692d563b0275,])),
+                tweedleFq::new(BigInteger([0x1758eeffd0793b03,0x37e1f13b2b104aa,0x71c181dd5d62c9d,0x3448bf7ebad19d00,])),
+                tweedleFq::new(BigInteger([0x63feeddf9fd791f,0xcf11513a74efebf6,0xc046e6ff5b45f4af,0x13a773bcdaabf9b1,])),
             ],
             vec![
-                tweedleFq::new(BigInteger([0x3ba1131ea507bc64,0xdb5361627ca99dde,0x1f2d47f63d54ae70,0x3a6e4e5385a085c2,])),
-                tweedleFq::new(BigInteger([0xb4b6cc077add652,0xc47e64b8b1316ff,0x975ab087fcecdd58,0x3641f4c76b53c84e,])),
-                tweedleFq::new(BigInteger([0x5f6190e71f11bf05,0x8be71bf7461f1ac4,0x513e0394d4bde9d1,0x3ecc4ef09355de45,])),
+                tweedleFq::new(BigInteger([0x6f2ad1eed8b08a65,0x23e051559fea114f,0x6e9855acf367f614,0x1f6ff3e5034d9adb,])),
+                tweedleFq::new(BigInteger([0xc76c27513034009f,0xf08aae84a5bdaf00,0xb4614eed8e6839d5,0x18b4587f29cdb052,])),
+                tweedleFq::new(BigInteger([0xa5a9c19386d171db,0x57321c0b6d91fa65,0xaa19cb2f60d37e5b,0x12a05d4caaa7d0ca,])),
             ],
         ];
 

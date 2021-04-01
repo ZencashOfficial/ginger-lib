@@ -13,11 +13,11 @@ pub type MNT4PoseidonHash = PoseidonHash<Fr, MNT4753PoseidonParameters, MNT4Inve
 pub type MNT4BatchPoseidonHash = PoseidonBatchHash<Fr, MNT4753PoseidonParameters, MNT4InversePoseidonSBox>;
 
 #[derive(Debug, Clone)]
-/// x^{-1}-POSEIDON-128 parameters for scalar field Fr of Coda's MNT4-753, with an MDS matrix supporting 
-/// short Montgomery multiplication. 
-/// 
-/// The number of rounds are computed by ./evidence/calc_round_numbers.py, round constants and matrix 
-/// are generated using the script ./evidence/generate_parameters_short_grain.
+// x^{-1}-POSEIDON-128 parameters for scalar field Fr of Coda's MNT4-753, with an MDS matrix supporting 
+// short Montgomery multiplication. 
+// 
+// The number of rounds are computed by ./evidence/calc_round_numbers.py, round constants and matrix 
+// are generated using the script ./evidence/generate_parameters_short_grain.
 pub struct MNT4753PoseidonParameters;
 
 impl FieldBasedHashParameters for MNT4753PoseidonParameters {
