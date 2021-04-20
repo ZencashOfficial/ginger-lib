@@ -14,7 +14,7 @@ use poly_commit::{
     ipa_pc::{InnerProductArgPC, CommitterKey, UniversalParams},
     Error as PCError
 };
-use rand::{ Rng, RngCore };
+use rand::RngCore;
 use digest::Digest;
 use r1cs_std::{
     alloc::AllocGadget,
@@ -324,7 +324,7 @@ pub fn generate_test_data<'a, G1: AffineCurve, G2: AffineCurve, D: Digest + 'a, 
         &committer_key_g1,
         &index_pk,
         info,
-        rng.gen(),
+        false,
         rng,
     );
 

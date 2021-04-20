@@ -464,4 +464,38 @@ mod test {
             rng
         );
     }
+
+    #[test]
+    fn proof_serialized_size() {
+        use algebra::CanonicalSerialize;
+
+        let rng = &mut thread_rng();
+
+        let num_constraints = 1 << 19;
+
+        for i in 17..=19 {
+            let segment_size = 1 << i;
+
+            let params_g1 = TestIPAPCDee::setup(segment_size - 1).unwrap();
+            let params_g2 = TestIPAPCDum::setup(segment_size - 1).unwrap();
+
+            let (final_darlin_pcd, index_vk) = generate_final_darlin_test_data::<_, _, Blake2s, _>(
+                num_constraints,
+                segment_size,
+                &params_g1,
+                &params_g2,
+                1,
+                rng
+            );
+
+            let mut buffer = vec![];
+            CanonicalSerialize::serialize(&final_darlin_pcd[0].final_darlin_proof, &mut buffer).unwrap();
+
+            println!(
+                "Num constraints: 1 << 19, Segment_size: 1 << {}, Proof size in bytes: {}",
+                i,
+                buffer.len()
+            )
+        }
+    }
 }
