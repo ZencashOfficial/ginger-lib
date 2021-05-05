@@ -1,5 +1,5 @@
 use crate::{
-    crh::*, field_based_mht::*, Error
+    crh::*, field_based_mht::*,
 };
 use std::{
     clone::Clone, io::{Write, Result as IoResult, Read}
@@ -104,12 +104,11 @@ impl<T: FieldBasedMerkleTreeParameters> FieldBasedMerkleTreePath for FieldBasedM
         Self { path }
     }
 
-    fn verify_without_length_check(
+    fn compute_root(
         &self,
-        leaf: &<Self::H as FieldBasedHash>::Data,
-        root: &<Self::H as FieldBasedHash>::Data
-    ) -> Result<bool, Error> {
-
+        leaf: &<Self::H as FieldBasedHash>::Data
+    ) -> <Self::H as FieldBasedHash>::Data
+    {
         // Rate may also be smaller than the arity actually, but this assertion
         // is reasonable and simplify the design. Should be also enforced by the
         // MerkleTree that creates this instance, but let's do it again.
@@ -138,12 +137,7 @@ impl<T: FieldBasedMerkleTreeParameters> FieldBasedMerkleTreePath for FieldBasedM
             digest.reset(None);
         }
 
-        // Check final computed node is equal to the root
-        if prev_node == root.clone() {
-            Ok(true)
-        } else {
-            Ok(false)
-        }
+        prev_node
     }
 
     fn get_raw_path(&self) -> Self::Path {
@@ -279,12 +273,11 @@ impl<T: FieldBasedMerkleTreeParameters> FieldBasedMerkleTreePath for FieldBasedB
         Self { path }
     }
 
-    fn verify_without_length_check(
+    fn compute_root(
         &self,
-        leaf: &<Self::H as FieldBasedHash>::Data,
-        root: &<Self::H as FieldBasedHash>::Data
-    ) -> Result<bool, Error> {
-
+        leaf: &<Self::H as FieldBasedHash>::Data
+    ) -> <Self::H as FieldBasedHash>::Data
+    {
         // Rate may also be smaller than the arity actually, but this assertion
         // is reasonable and simplify the design. Should be also enforced by the
         // MerkleTree that creates this instance, but let's do it again.
@@ -309,12 +302,7 @@ impl<T: FieldBasedMerkleTreeParameters> FieldBasedMerkleTreePath for FieldBasedB
             digest.reset(None);
         }
 
-        // Check final computed node is equal to the root
-        if prev_node == root.clone() {
-            Ok(true)
-        } else {
-            Ok(false)
-        }
+        prev_node
     }
 
     fn get_raw_path(&self) -> Self::Path {

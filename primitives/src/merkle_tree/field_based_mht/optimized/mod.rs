@@ -1,5 +1,5 @@
 use algebra::Field;
-use crate::{BatchFieldBasedMerkleTreeParameters, BatchFieldBasedHash, FieldBasedMerkleTree, FieldBasedMerkleTreePath, FieldBasedMHTPath, FieldBasedHash, FieldBasedHashParameters, check_precomputed_parameters};
+use crate::{Error, BatchFieldBasedMerkleTreeParameters, BatchFieldBasedHash, FieldBasedMerkleTree, FieldBasedMerkleTreePath, FieldBasedMHTPath, FieldBasedHash, FieldBasedHashParameters, check_precomputed_parameters, MerkleTreeError};
 use std::marker::PhantomData;
 
 /// An implementation of FieldBasedMerkleTree, optimized in time and memory,
@@ -182,14 +182,11 @@ impl<T: BatchFieldBasedMerkleTreeParameters> FieldBasedMerkleTree for FieldBased
     type Parameters = T;
     type MerklePath = FieldBasedMHTPath<T>;
 
-    /// Note: `Field` implements the `Copy` trait, therefore invoking this function won't
-    /// cause a moving of ownership for `leaf`, but just a copy. Another copy is
-    /// performed below in `self.array_nodes[self.new_elem_pos_subarray[0]] = leaf;`
-    /// We can reduce this to one copy by passing a reference to leaf, but from an
-    /// interface point of view this is not logically correct: someone calling this
-    /// functions will likely not use the `leaf` anymore in most of the cases
-    /// (in the other cases he can just clone it).
-    fn append(&mut self, leaf: T::Data) -> &mut Self {
+
+    fn append(&mut self, leaf: T::Data) -> Result<&mut Self, Error> {
+        if self.processed_pos[0] == self.final_pos[0] {
+            Err(MerkleTreeError::MaximumLeavesReached(self.height))?
+        }
         if self.new_elem_pos[0] < self.final_pos[0] {
             self.array_nodes[self.new_elem_pos[0]] = leaf;
             self.new_elem_pos[0] += 1;
@@ -202,7 +199,8 @@ impl<T: BatchFieldBasedMerkleTreeParameters> FieldBasedMerkleTree for FieldBased
         if (self.new_elem_pos[0] - self.processed_pos[0]) >= self.processing_step {
             self.compute_subtree();
         }
-        self
+
+        Ok(self)
     }
 
     fn finalize(&self) -> Self {
@@ -357,10 +355,14 @@ mod test {
         let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
         let mut leaves = Vec::new();
         for _ in 0..num_leaves {
-            let r = MNT4753Fr::rand(&mut rng);
-            leaves.push(r);
-            tree.append(r);
+            let leaf = MNT4753Fr::rand(&mut rng);
+            tree.append(leaf.clone()).unwrap();
+            leaves.push(leaf);
         }
+
+        // Exceeding maximum leaves will result in an error
+        assert!(tree.append(MNT4753Fr::rand(&mut rng)).is_err());
+
         tree.finalize_in_place();
         assert_eq!(tree.root().unwrap(), expected_output, "Output of the Merkle tree computation for MNT4 does not match to the expected value.");
         assert_eq!(tree.get_leaves(), leaves.as_slice(), "");
@@ -376,10 +378,14 @@ mod test {
         let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
         let mut leaves = Vec::new();
         for _ in 0..num_leaves {
-            let r = MNT6753Fr::rand(&mut rng);
-            leaves.push(r);
-            tree.append(r);
+            let leaf = MNT6753Fr::rand(&mut rng);
+            tree.append(leaf.clone()).unwrap();
+            leaves.push(leaf);
         }
+
+        // Exceeding maximum leaves will result in an error
+        assert!(tree.append(MNT6753Fr::rand(&mut rng)).is_err());
+
         tree.finalize_in_place();
         assert_eq!(tree.root().unwrap(), expected_output, "Output of the Merkle tree computation for MNT6 does not match to the expected value.");
         assert_eq!(tree.get_leaves(), leaves.as_slice());
@@ -406,7 +412,7 @@ mod test {
 
             // Push them in a Poseidon Merkle Tree and get the root
             let mut mt = MNT4PoseidonMHT::init(max_height, num_leaves);
-            leaves[0..num_leaves].iter().for_each(|&leaf| { mt.append(leaf); });
+            leaves[0..num_leaves].iter().for_each(|&leaf| { mt.append(leaf).unwrap(); });
             let root = mt.finalize_in_place().root().unwrap();
 
             assert_eq!(naive_root, root);
@@ -432,7 +438,7 @@ mod test {
 
             // Push them in a Poseidon Merkle Tree and get the root
             let mut mt = MNT4PoseidonMHT::init(max_height, num_leaves);
-            leaves[..].iter().for_each(|&leaf| { mt.append(leaf); });
+            leaves[..].iter().for_each(|&leaf| { mt.append(leaf).unwrap(); });
             let root = mt.finalize_in_place().root().unwrap();
 
             assert_eq!(naive_root, root);
@@ -461,7 +467,7 @@ mod test {
 
             // Push them in a Poseidon Merkle Tree and get the root
             let mut mt = MNT6PoseidonMHT::init(max_height, num_leaves);
-            leaves[..].iter().for_each(|&leaf| { mt.append(leaf); });
+            leaves[..].iter().for_each(|&leaf| { mt.append(leaf).unwrap(); });
             let root = mt.finalize_in_place().root().unwrap();
 
             assert_eq!(naive_root, root);
@@ -488,7 +494,7 @@ mod test {
 
             // Push them in a Poseidon Merkle Tree and get the root
             let mut mt = MNT6PoseidonMHT::init(max_height, num_leaves);
-            leaves[0..num_leaves].iter().for_each(|&leaf| { mt.append(leaf); });
+            leaves[0..num_leaves].iter().for_each(|&leaf| { mt.append(leaf).unwrap(); });
             let root = mt.finalize_in_place().root().unwrap();
 
             assert_eq!(naive_root, root);
@@ -507,7 +513,7 @@ mod test {
         // Generate random leaves, half of which empty
         for _ in 0..num_leaves/2 {
             let leaf = MNT4753Fr::rand(&mut rng);
-            tree.append(leaf);
+            tree.append(leaf).unwrap();
             leaves.push(leaf);
         }
         for _ in num_leaves/2..num_leaves {
@@ -579,7 +585,7 @@ mod test {
         // Generate random leaves
         for i in 0..num_leaves {
             let leaf = MNT4753Fr::rand(&mut rng);
-            tree.append(leaf);
+            tree.append(leaf).unwrap();
 
             let tree_copy = tree.finalize();
             let path = tree_copy.get_merkle_path(i).unwrap();
@@ -599,7 +605,7 @@ mod test {
         // Generate random leaves, half of which empty
         for _ in 0..num_leaves/2 {
             let leaf = MNT6753Fr::rand(&mut rng);
-            tree.append(leaf);
+            tree.append(leaf).unwrap();
             leaves.push(leaf);
         }
         for _ in num_leaves/2..num_leaves {
