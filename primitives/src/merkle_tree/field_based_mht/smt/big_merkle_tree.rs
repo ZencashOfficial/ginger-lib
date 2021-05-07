@@ -399,6 +399,20 @@ impl<T: FieldBasedMerkleTreeParameters> BigMerkleTree<T> {
     /* Merkle tree operations */
     /*===============================================================================*/
 
+    pub fn get_leaf(&self, coord: Coord) -> Option<T::Data> {
+        // check that the index of the leaf to be retrieved is less than the width of the Merkle tree
+        assert!(coord.idx < self.width, "Leaf index out of bound.");
+        // check that the coordinates of the node corresponds to the leaf level
+        assert_eq!(coord.height, 0, "Coord of the node does not correspond to leaf level");
+
+        if self.state.present_node.contains(&coord) {
+            let leaf = self.get_from_db(coord.idx)?;
+            Some(leaf)
+        } else {
+            None
+        }
+    }
+
     pub fn insert_leaf(&mut self, coord: Coord, leaf: T::Data) {
         // Inserts a leaf in the Merkle tree.
         // Updates the Merkle tree on the path from the leaf to the root
