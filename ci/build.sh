@@ -7,7 +7,7 @@ cargo check
 
 cargo check --all-features --tests
 
-cargo +nightly-2020-04-22 check --all-features --tests --benches
+cargo +nightly-2021-04-25 check --all-features --tests --benches
 
 cd /ginger-lib/algebra
 
@@ -15,7 +15,7 @@ cargo check
 
 cargo check --all-features --tests
 
-cargo +nightly-2020-04-22 check --all-features --tests --benches
+cargo +nightly-2021-04-25 check --all-features --tests --benches
 
 cargo check --features "parallel"
 
@@ -55,7 +55,7 @@ cargo check
 
 cargo check --all-features --tests
 
-cargo +nightly-2020-04-22 check --all-features --tests --benches
+cargo +nightly-2021-04-25 check --all-features --tests --benches
 
 cargo check --features "llvm_asm"
 
@@ -83,7 +83,7 @@ cargo check
 
 cargo check --all-features --tests --examples
 
-cargo +nightly-2020-04-22 check --all-features --tests --benches --examples
+cargo +nightly-2021-04-25 check --all-features --tests --benches --examples
 
 cargo check --features "llvm_asm"
 
@@ -156,4 +156,4 @@ cd /ginger-lib/
 
 cargo test --all-features
 
-RUSTFLAGS="-C target-feature=+bmi2,+adx --emit=asm" cargo +nightly-2020-04-22 test --all-features
+RUSTFLAGS="-C target-feature=+bmi2,+adx --emit=asm" cargo +nightly-2021-04-25 test --all-features
