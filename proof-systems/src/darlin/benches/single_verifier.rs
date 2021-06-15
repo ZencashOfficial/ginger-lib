@@ -1,4 +1,4 @@
-use algebra::{AffineCurve, ToConstraintField};
+use algebra::{AffineCurve, ToConstraintField, serialize::*};
 use poly_commit::{
     PolynomialCommitment,
     ipa_pc::InnerProductArgPC
@@ -49,14 +49,30 @@ fn bench_single_verifier<G1: AffineCurve, G2: AffineCurve, D: Digest>(
             rng
         );
 
+        let (proof, vk, usr_ins) = (&final_darlin_pcd[0].final_darlin_proof, &index_vk[0], &final_darlin_pcd[0].usr_ins);
+
+        {
+            let proof_serialized_size = proof.serialized_size();
+            let mut proof_serialized = Vec::with_capacity(proof_serialized_size);
+            CanonicalSerialize::serialize(proof, &mut proof_serialized).unwrap();
+            assert_eq!(proof_serialized.len(), proof_serialized_size);
+            println!("Proof size: {:?}", proof_serialized_size);
+
+            let vk_serialized_size = vk.serialized_size();
+            let mut vk_serialized = Vec::with_capacity(vk_serialized_size);
+            CanonicalSerialize::serialize(&vk, &mut vk_serialized).unwrap();
+            assert_eq!(vk_serialized.len(), vk_serialized_size);
+            println!("Vk size: {:?}", vk_serialized_size);
+        }
+
         group.bench_with_input(BenchmarkId::from_parameter(segment_size), &segment_size, |bn, _segment_size| {
             bn.iter(|| {
                 assert!(FinalDarlin::<G1, G2, D>::verify(
-                    &index_vk[0],
+                    vk,
                     &verifier_key_g1,
                     &verifier_key_g2,
-                    final_darlin_pcd[0].usr_ins.as_slice(),
-                    &final_darlin_pcd[0].final_darlin_proof,
+                    usr_ins,
+                    proof,
                     &mut thread_rng()
                 ).unwrap());
             });
@@ -73,18 +89,18 @@ fn bench_single_verifier_ss_tweedle(c: &mut Criterion) {
         dum::Affine as TweedleDum,
     };
 
-    bench_single_verifier::<TweedleDee, TweedleDum, Blake2s>(
+    /*bench_single_verifier::<TweedleDee, TweedleDum, Blake2s>(
         c,
         "tweedle-dee, |H| = 1 << 19, |K| = 1 << 20, segment_size: ",
         1 << 19,
         vec![1 << 14, 1 << 15, 1 << 16, 1 << 17, 1 << 18],
-    );
+    );*/
 
     bench_single_verifier::<TweedleDee, TweedleDum, Blake2s>(
         c,
         "tweedle-dee, |H| = 1 << 20, |K| = 1 << 21, segment_size",
         1 << 20,
-        vec![1 << 14, 1 << 15, 1 << 16, 1 << 17, 1 << 18],
+        vec![1 << 15, 1 << 16, 1 << 17, 1 << 18],
     );
 }
 
