@@ -9,12 +9,14 @@ use proof_systems::darlin::{
         get_keys,
         final_darlin::generate_test_data as generate_final_darlin_test_data
     },
+    proof_aggregator::*,
 };
 use digest::Digest;
 use criterion::*;
 use rand::{thread_rng, SeedableRng};
 use blake2::Blake2s;
 use rand_xorshift::XorShiftRng;
+use proof_systems::darlin::pcd::GeneralPCD;
 
 fn bench_single_verifier<G1: AffineCurve, G2: AffineCurve, D: Digest>(
     c: &mut Criterion,
@@ -28,6 +30,7 @@ fn bench_single_verifier<G1: AffineCurve, G2: AffineCurve, D: Digest>(
 {
     let rng = &mut XorShiftRng::seed_from_u64(1234567890u64);
     let mut group = c.benchmark_group(bench_name);
+    let num_proofs = 100;
 
     for segment_size in segment_size_vals.into_iter() {
 
@@ -49,7 +52,23 @@ fn bench_single_verifier<G1: AffineCurve, G2: AffineCurve, D: Digest>(
             rng
         );
 
-        let (proof, vk, usr_ins) = (&final_darlin_pcd[0].final_darlin_proof, &index_vk[0], &final_darlin_pcd[0].usr_ins);
+        // Collect PCDs and vks
+        let pcds = vec![GeneralPCD::FinalDarlin(final_darlin_pcd[0].clone()); num_proofs];
+        let vks = vec![index_vk[0].clone(); num_proofs];
+
+        group.bench_with_input(BenchmarkId::from_parameter(segment_size), &segment_size, |bn, _segment_size| {
+            bn.iter(|| {
+                assert!(batch_verify_proofs::<G1, G2, D, _>(
+                    pcds.as_slice(),
+                    vks.as_slice(),
+                    &verifier_key_g1,
+                    &verifier_key_g2,
+                    &mut thread_rng()
+                ).unwrap());
+            });
+        });
+
+        /*let (proof, vk, usr_ins) = (&final_darlin_pcd[0].final_darlin_proof, &index_vk[0], &final_darlin_pcd[0].usr_ins);
 
         {
             let proof_serialized_size = proof.serialized_size();
@@ -76,7 +95,7 @@ fn bench_single_verifier<G1: AffineCurve, G2: AffineCurve, D: Digest>(
                     &mut thread_rng()
                 ).unwrap());
             });
-        });
+        });*/
     }
 
     group.finish();
@@ -89,18 +108,18 @@ fn bench_single_verifier_ss_tweedle(c: &mut Criterion) {
         dum::Affine as TweedleDum,
     };
 
-    /*bench_single_verifier::<TweedleDee, TweedleDum, Blake2s>(
+    bench_single_verifier::<TweedleDee, TweedleDum, Blake2s>(
         c,
         "tweedle-dee, |H| = 1 << 19, |K| = 1 << 20, segment_size: ",
         1 << 19,
         vec![1 << 14, 1 << 15, 1 << 16, 1 << 17, 1 << 18],
-    );*/
+    );
 
     bench_single_verifier::<TweedleDee, TweedleDum, Blake2s>(
         c,
         "tweedle-dee, |H| = 1 << 20, |K| = 1 << 21, segment_size",
         1 << 20,
-        vec![1 << 15, 1 << 16, 1 << 17, 1 << 18],
+        vec![1 << 15, 1 << 16, 1 << 17, 1 << 18, 1 << 19],
     );
 }
 
