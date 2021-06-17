@@ -560,4 +560,25 @@ mod test {
         println!("------ {} - G_final", proof.deferred.previous_acc.g_final.serialized_size());
         println!("------ {} - xi_s", proof.deferred.previous_acc.xi_s.serialized_size());
     }
+
+    #[ignore]
+    #[test]
+    fn print_domain_h_sizes() {
+        use crate::darlin::pcd::simple_marlin::compute_max_domain_h_size;
+
+        let density = 2;
+        let max_proof_size = 6300;
+        let proof_type = "darlin";
+
+        for zk in vec![true, false].into_iter() {
+            for size in 15..19 {
+                let segment_size = 1 << size;
+                let res = compute_max_domain_h_size(segment_size, density, zk, max_proof_size, proof_type);
+                println!(
+                    "For Density: {}, MaxProofSize: {}, ProofType: {}, Zk: {}, SegmentSize: 1 << {}, Max supported H size is: 1 << {}, Proof size: {} bytes, Vk size: {} bytes",
+                    density, max_proof_size, proof_type, zk, size, res.0, res.1, res.2
+                );
+            }
+        }
+    }
 }

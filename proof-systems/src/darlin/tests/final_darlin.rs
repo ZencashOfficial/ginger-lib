@@ -1,11 +1,12 @@
 //! A test circuit which, besides processing additional data according to
 //! a simple quadratic relation, allocates a given instance of `FinalDarlinDeferredData`,
 //! and wires it to the outside via system inputs.
-use algebra::{AffineCurve, ToConstraintField, UniformRand};
+use algebra::{AffineCurve, ToConstraintField, UniformRand, SemanticallyValid};
 use r1cs_core::{ConstraintSynthesizer, ConstraintSystem, SynthesisError};
 use crate::darlin::{
     pcd::{
         PCD, PCDParameters, PCDCircuit,
+        simple_marlin::{is_vk_consistent_with, is_proof_consistent_with},
         final_darlin::FinalDarlinPCD,
         error::PCDError,
     },
@@ -369,6 +370,15 @@ pub fn generate_test_data<'a, G1: AffineCurve, G2: AffineCurve, D: Digest + 'a, 
         info.clone()
     ).unwrap();
 
+    let domain_h_size = std::cmp::max(index_vk.index_info.num_constraints, index_vk.index_info.num_variables).next_power_of_two();
+    let domain_k_size = index_vk.index_info.num_non_zero.next_power_of_two();
+    let segment_size = (segment_size - 1).next_power_of_two();
+    assert!(index_vk.is_valid());
+    assert!(is_vk_consistent_with(&index_vk, segment_size, domain_h_size, domain_k_size));
+    assert!(!is_vk_consistent_with(&index_vk, segment_size * 2, domain_h_size, domain_k_size));
+    assert!(!is_vk_consistent_with(&index_vk, segment_size, domain_h_size/2, domain_k_size));
+    assert!(!is_vk_consistent_with(&index_vk, segment_size, domain_h_size, domain_k_size/2));
+
     // Generate Final Darlin PCDs
     let final_darlin_pcd = generate_test_pcd::<G1, G2, D, R>(
         &committer_key_g1,
@@ -377,6 +387,13 @@ pub fn generate_test_data<'a, G1: AffineCurve, G2: AffineCurve, D: Digest + 'a, 
         rng.gen(),
         rng,
     );
+
+    let proof = &final_darlin_pcd.final_darlin_proof.proof;
+    assert!(is_proof_consistent_with(proof, &index_vk, segment_size/2, segment_size * 2, domain_h_size, domain_k_size));
+    assert!(!is_proof_consistent_with(proof, &index_vk, segment_size * 2, segment_size * 2, domain_h_size, domain_k_size));
+    assert!(!is_proof_consistent_with(proof, &index_vk, segment_size/2, segment_size/2, domain_h_size, domain_k_size));
+    assert!(!is_proof_consistent_with(proof, &index_vk, segment_size/2, segment_size * 2, domain_h_size/2, domain_k_size));
+    assert!(!is_proof_consistent_with(proof, &index_vk, segment_size/2, segment_size * 2, domain_h_size, domain_k_size/2));
 
     (vec![final_darlin_pcd; num_proofs], vec![index_vk; num_proofs])
 }

@@ -1,13 +1,13 @@
 //! A R1CS density one test circuit of specified number of constraints, which processes 
 //! two public inputs satisfying a simple quadratic relation.
-use algebra::{Field, AffineCurve, UniformRand};
+use algebra::{Field, AffineCurve, UniformRand, SemanticallyValid};
 use r1cs_core::{ConstraintSynthesizer, ConstraintSystem, SynthesisError};
 use poly_commit::ipa_pc::{InnerProductArgPC, CommitterKey, UniversalParams};
 use marlin::{
     Marlin, ProverKey as MarlinProverKey, VerifierKey as MarlinVerifierKey,
 };
 use crate::darlin::pcd::{
-    PCDParameters, simple_marlin::{SimpleMarlinPCD, MarlinProof}
+    PCDParameters, simple_marlin::{SimpleMarlinPCD, MarlinProof, is_vk_consistent_with, is_proof_consistent_with}
 };
 use rand::{ Rng, RngCore };
 use digest::Digest;
@@ -148,6 +148,15 @@ pub fn generate_test_data<'a, G: AffineCurve, D: Digest + 'a, R: RngCore>(
         &committer_key, circ.clone()
     ).unwrap();
 
+    let domain_h_size = std::cmp::max(index_vk.index_info.num_constraints, index_vk.index_info.num_variables).next_power_of_two();
+    let domain_k_size = index_vk.index_info.num_non_zero.next_power_of_two();
+    let segment_size = (segment_size - 1).next_power_of_two();
+    assert!(index_vk.is_valid());
+    assert!(is_vk_consistent_with(&index_vk, segment_size, domain_h_size, domain_k_size));
+    assert!(!is_vk_consistent_with(&index_vk, segment_size * 2, domain_h_size, domain_k_size));
+    assert!(!is_vk_consistent_with(&index_vk, segment_size, domain_h_size/2, domain_k_size));
+    assert!(!is_vk_consistent_with(&index_vk, segment_size, domain_h_size, domain_k_size/2));
+
     // Generate Marlin PCDs
     let simple_marlin_pcd = generate_test_pcd::<G, D, R>(
         &committer_key,
@@ -156,6 +165,13 @@ pub fn generate_test_data<'a, G: AffineCurve, D: Digest + 'a, R: RngCore>(
         rng.gen(),
         rng,
     );
+
+    let proof = &simple_marlin_pcd.proof;
+    assert!(is_proof_consistent_with(proof, &index_vk, segment_size/2, segment_size * 2, domain_h_size, domain_k_size));
+    assert!(!is_proof_consistent_with(proof, &index_vk, segment_size * 2, segment_size * 2, domain_h_size, domain_k_size));
+    assert!(!is_proof_consistent_with(proof, &index_vk, segment_size/2, segment_size/2, domain_h_size, domain_k_size));
+    assert!(!is_proof_consistent_with(proof, &index_vk, segment_size/2, segment_size * 2, domain_h_size/2, domain_k_size));
+    assert!(!is_proof_consistent_with(proof, &index_vk, segment_size/2, segment_size * 2, domain_h_size, domain_k_size/2));
 
     (vec![simple_marlin_pcd; num_proofs], vec![index_vk; num_proofs])
 }
