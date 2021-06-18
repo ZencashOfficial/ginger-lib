@@ -8,6 +8,7 @@ use std::{
 
 use crate::crh::FixedLengthCRH;
 use algebra::{groups::Group, Field, ToConstraintField};
+use serde::{Serialize, Deserialize};
 
 
 pub trait PedersenWindow: Clone {
@@ -15,7 +16,8 @@ pub trait PedersenWindow: Clone {
     const NUM_WINDOWS: usize;
 }
 
-#[derive(Clone, Default)]
+#[derive(Clone, Default, Serialize, Deserialize)]
+#[serde(bound(deserialize = "G: Group"))]
 pub struct PedersenParameters<G: Group> {
     pub generators: Vec<Vec<G>>,
 }
@@ -123,6 +125,25 @@ impl<G: Group> Debug for PedersenParameters<G> {
             write!(f, "\t  Generator {}: {:?}\n", i, g)?;
         }
         write!(f, "}}\n")
+    }
+}
+
+impl<G: Group> PedersenParameters<G>{
+    pub fn check_consistency(&self) -> bool {
+        for (i, p1) in self.generators.iter().enumerate() {
+            if p1[0] == G::zero() {
+                return false; // infinity generator
+            }
+            for p2 in self.generators.iter().skip(i + 1) {
+                if p1[0] == p2[0] {
+                    return false; // duplicate generator
+                }
+                if p1[0] == p2[0].neg() {
+                    return false; // inverse generator
+                }
+            }
+        }
+        return true;
     }
 }
 

@@ -22,11 +22,11 @@ pub struct PedersenCRHGadgetParameters<
 }
 
 pub struct PedersenCRHGadget<G: Group, ConstraintF: Field, GG: GroupGadget<G, ConstraintF>> {
-    #[doc(hideen)]
+    #[doc(hidden)]
     _group: PhantomData<*const G>,
-    #[doc(hideen)]
+    #[doc(hidden)]
     _group_gadget: PhantomData<*const GG>,
-    #[doc(hideen)]
+    #[doc(hidden)]
     _engine: PhantomData<ConstraintF>,
 }
 
@@ -122,7 +122,7 @@ mod test {
     use algebra::curves::{jubjub::JubJubProjective as JubJub, ProjectiveCurve};
     use r1cs_core::ConstraintSystem;
     use r1cs_std::{
-        groups::curves::twisted_edwards::jubjub::JubJubGadget, prelude::*,
+        instantiated::jubjub::JubJubGadget, prelude::*,
         test_constraint_system::TestConstraintSystem,
     };
 

@@ -9,11 +9,12 @@ use std::{
 use super::pedersen::{PedersenCRH, PedersenWindow};
 use crate::crh::FixedLengthCRH;
 use algebra::{biginteger::BigInteger, fields::PrimeField, groups::Group};
-
+use serde::{Serialize, Deserialize};
 
 pub const CHUNK_SIZE: usize = 3;
 
-#[derive(Clone, Default)]
+#[derive(Clone, Default, Serialize, Deserialize)]
+#[serde(bound(deserialize = "G: Group"))]
 pub struct BoweHopwoodPedersenParameters<G: Group> {
     pub generators: Vec<Vec<G>>,
 }
@@ -158,6 +159,25 @@ impl<G: Group> Debug for BoweHopwoodPedersenParameters<G> {
             write!(f, "\t  Generator {}: {:?}\n", i, g)?;
         }
         write!(f, "}}\n")
+    }
+}
+
+impl<G: Group> BoweHopwoodPedersenParameters<G>{
+    pub fn check_consistency(&self) -> bool {
+        for (i, p1) in self.generators.iter().enumerate() {
+            if p1[0] == G::zero() {
+                return false; // infinity generator
+            }
+            for p2 in self.generators.iter().skip(i + 1) {
+                if p1[0] == p2[0] {
+                    return false; // duplicate generator
+                }
+                if p1[0] == p2[0].neg() {
+                    return false; // inverse generator
+                }
+            }
+        }
+        return true;
     }
 }
 

@@ -1,8 +1,8 @@
-use algebra::{
-    groups::Group, msm::FixedBaseMSM, Field, PairingEngine, PrimeField, ProjectiveCurve,
-    UniformRand,
+use algebra::{groups::Group, Field, PairingEngine, PrimeField, ProjectiveCurve, UniformRand};
+use algebra::msm::FixedBaseMSM;
+use algebra::fft::domain::{
+    get_best_evaluation_domain, sample_element_outside_domain
 };
-use algebra::fft::EvaluationDomain;
 
 use r1cs_core::{
     ConstraintSynthesizer, ConstraintSystem, Index, LinearCombination, SynthesisError, Variable,
@@ -10,7 +10,7 @@ use r1cs_core::{
 use rand::Rng;
 use rayon::prelude::*;
 
-use crate::groth16::{r1cs_to_qap::R1CStoQAP, Parameters, VerifyingKey};
+use crate::groth16::{r1cs_to_qap::R1CStoQAP, Parameters, VerifyingKey, push_constraints};
 
 /// Generates a random common reference string for
 /// a circuit.
@@ -85,34 +85,22 @@ impl<E: PairingEngine> ConstraintSystem<E::Fr> for KeypairAssembly<E> {
             LB: FnOnce(LinearCombination<E::Fr>) -> LinearCombination<E::Fr>,
             LC: FnOnce(LinearCombination<E::Fr>) -> LinearCombination<E::Fr>,
     {
-        fn eval<E: PairingEngine>(
-            l: LinearCombination<E::Fr>,
-            constraints: &mut [Vec<(E::Fr, Index)>],
-            this_constraint: usize,
-        ) {
-            for (var, coeff) in l.as_ref() {
-                match var.get_unchecked() {
-                    Index::Input(i) => constraints[this_constraint].push((*coeff, Index::Input(i))),
-                    Index::Aux(i) => constraints[this_constraint].push((*coeff, Index::Aux(i))),
-                }
-            }
-        }
 
         self.at.push(vec![]);
         self.bt.push(vec![]);
         self.ct.push(vec![]);
 
-        eval::<E>(
+        push_constraints(
             a(LinearCombination::zero()),
             &mut self.at,
             self.num_constraints,
         );
-        eval::<E>(
+        push_constraints(
             b(LinearCombination::zero()),
             &mut self.bt,
             self.num_constraints,
         );
-        eval::<E>(
+        push_constraints(
             c(LinearCombination::zero()),
             &mut self.ct,
             self.num_constraints,
@@ -177,9 +165,11 @@ pub fn generate_parameters<E, C, R>(
     let domain_time = start_timer!(|| "Constructing evaluation domain");
 
     let domain_size = assembly.num_constraints + (assembly.num_inputs - 1) + 1;
-    let domain = EvaluationDomain::<E::Fr>::new(domain_size)
+    let domain = get_best_evaluation_domain::<E::Fr>(domain_size)
         .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
-    let t = domain.sample_element_outside_domain(rng);
+
+    //Sample element outside domain
+    let t = sample_element_outside_domain(&domain, rng);
 
     end_timer!(domain_time);
     ///////////////////////////////////////////////////////////////////////////

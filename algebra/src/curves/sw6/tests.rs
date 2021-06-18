@@ -1,11 +1,8 @@
-use crate::{
-    curves::{
-        sw6::{G1Affine, G1Projective, G2Affine, G2Projective, SW6},
-        tests::curve_tests,
-        AffineCurve, PairingEngine,
-    },
-    groups::tests::group_test,
-};
+use crate::{curves::{
+    sw6::{G1Affine, G1Projective, G2Affine, G2Projective, SW6, g1::SW6G1Parameters, g2::SW6G2Parameters},
+    tests::{curve_tests, sw_jacobian_tests},
+    AffineCurve, PairingEngine,
+}, groups::tests::group_test, SemanticallyValid};
 
 #[test]
 fn test_g1_projective_curve() {
@@ -17,18 +14,19 @@ fn test_g1_projective_group() {
     let a: G1Projective = rand::random();
     let b: G1Projective = rand::random();
     group_test(a, b);
+    sw_jacobian_tests::<SW6G1Parameters>()
 }
 
 #[test]
 fn test_g1_generator() {
     let generator = G1Affine::prime_subgroup_generator();
-    assert!(generator.is_on_curve());
-    assert!(generator.is_in_correct_subgroup_assuming_on_curve());
+    assert!(generator.is_valid());
 }
 
 #[test]
 fn test_g2_projective_curve() {
     curve_tests::<G2Projective>();
+    sw_jacobian_tests::<SW6G2Parameters>()
 }
 
 #[test]
@@ -41,8 +39,7 @@ fn test_g2_projective_group() {
 #[test]
 fn test_g2_generator() {
     let generator = G2Affine::prime_subgroup_generator();
-    assert!(generator.is_on_curve());
-    assert!(generator.is_in_correct_subgroup_assuming_on_curve());
+    assert!(generator.is_valid());
 }
 
 #[test]
