@@ -311,6 +311,161 @@ impl<F, P, SB> FieldBasedHash for PoseidonHash<F, P, SB>
     }
 }
 
+#[derive(Derivative)]
+#[derivative(
+    Clone(bound = ""),
+    Debug(bound = "")
+)]
+pub struct PoseidonSponge<F: PrimeField, P: PoseidonParameters<Fr = F>, SB: SBox<Field = F, Parameters = P>> {
+    pub(crate) mode:    SpongeMode,
+    pub(crate) state:   Vec<F>,
+    pub(crate) pending: Vec<F>,
+    _parameters:        PhantomData<P>,
+    _sbox:              PhantomData<SB>
+}
+
+impl<F, P, SB> PoseidonSponge<F, P, SB>
+    where
+        F: PrimeField,
+        P: PoseidonParameters<Fr = F>,
+        SB: SBox<Field = F, Parameters = P>,
+{
+    pub fn new(mode: SpongeMode, state: Vec<F>, pending: Vec<F>) -> Self {
+        Self { mode, state, pending, _parameters: PhantomData, _sbox: PhantomData }
+    }
+
+    fn apply_permutation(&mut self) {
+        for (input, state) in self.pending.iter().zip(self.state.iter_mut()) {
+            *state += input;
+        }
+        PoseidonHash::<F, P, SB>::poseidon_perm(&mut self.state);
+        self.pending.clear();
+    }
+
+    fn update(&mut self, input: F) {
+        self.pending.push(input);
+        if self.pending.len() == P::R {
+            self.apply_permutation();
+        }
+    }
+
+    pub fn get_pending(&self) -> &[F] {
+        &self.pending
+    }
+}
+
+impl<F, P, SB> AlgebraicSponge<F> for PoseidonSponge<F, P, SB>
+    where
+        F: PrimeField,
+        P: PoseidonParameters<Fr = F>,
+        SB: SBox<Field = F, Parameters = P>,
+{
+    fn init() -> Self {
+        let mut state = Vec::with_capacity(P::T);
+        for i in 0..P::T {
+            state.push(P::AFTER_ZERO_PERM[i]);
+        }
+
+        Self {
+            mode: SpongeMode::Absorbing,
+            state,
+            pending: Vec::with_capacity(P::R),
+            _parameters: PhantomData,
+            _sbox: PhantomData,
+        }
+    }
+
+    fn get_state(&self) -> &[F] {
+        self.state.as_slice()
+    }
+
+    fn set_state(&mut self, state: Vec<F>) {
+        assert_eq!(state.len(), P::T);
+        self.state = state;
+    }
+
+    fn get_mode(&self) -> &SpongeMode {
+        &self.mode
+    }
+
+    fn set_mode(&mut self, mode: SpongeMode) {
+        self.mode = mode;
+    }
+
+    fn absorb(&mut self, elems: Vec<F>) {
+
+        if elems.len() > 0 {
+            match self.mode {
+
+                // If we were absorbing keep doing it
+                SpongeMode::Absorbing => elems.into_iter().for_each(|f| { self.update(f); }),
+
+                // If we were squeezing, change the state into absorbing
+                SpongeMode::Squeezing => {
+                    self.mode = SpongeMode::Absorbing;
+                    self.absorb(elems);
+                }
+            }
+        }
+    }
+
+    fn squeeze(&mut self, num: usize) -> Vec<F> {
+        let mut outputs = Vec::with_capacity(num);
+
+        if num > 0 {
+            match self.mode {
+                SpongeMode::Absorbing => {
+                    // If pending is empty and we were in absorbing, it means that a Poseidon
+                    // permutation was applied just before calling squeeze(), (unless you absorbed
+                    // nothing, but that is handled) therefore it's wasted to apply another
+                    // permutation, and we can directly add state[0] to the outputs
+                    if self.pending.len() == 0 {
+                        outputs.push(self.state[0].clone());
+                    }
+
+                    // If pending is not empty and we were absorbing, then we need to add the
+                    // pending elements to the state and then apply a permutation
+                    else {
+                        self.apply_permutation();
+                        outputs.push(self.state[0].clone());
+                    }
+                    self.mode = SpongeMode::Squeezing;
+                    outputs.append(&mut self.squeeze(num - 1));
+                },
+
+                // If we were squeezing, then squeeze the required number of field elements
+                SpongeMode::Squeezing => {
+                    debug_assert!(self.pending.len() == 0);
+
+                    for _ in 0..num {
+                        PoseidonHash::<F, P, SB>::poseidon_perm(&mut self.state);
+                        outputs.push(self.state[0].clone());
+                    }
+                }
+            }
+        }
+        outputs
+    }
+}
+
+impl<F, P, SB> From<Vec<F>> for PoseidonSponge<F, P, SB>
+    where
+        F: PrimeField,
+        P: PoseidonParameters<Fr = F>,
+        SB: SBox<Field = F, Parameters = P>,
+{
+    fn from(other: Vec<F>) -> Self {
+        assert_eq!(other.len(), P::T);
+        Self {
+            mode: SpongeMode::Absorbing,
+            state: other,
+            pending: Vec::with_capacity(P::R),
+            _parameters: PhantomData,
+            _sbox: PhantomData
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
     use algebra::{Field, PrimeField};
@@ -321,6 +476,7 @@ mod test {
         }
     };
     use crate::{FieldBasedHashParameters, PoseidonParameters, PoseidonHash};
+    use crate::crh::test::algebraic_sponge_test;
 
     fn generate_inputs<F: PrimeField>(num: usize) -> Vec<F>{
         let mut inputs = Vec::with_capacity(num);
@@ -396,9 +552,7 @@ mod test {
             biginteger::BigInteger768,
             fields::mnt4753::Fr as MNT4753Fr
         };
-        use crate::crh::poseidon::parameters::mnt4753::{
-            MNT4PoseidonHash, MNT4753PoseidonParameters, MNT4InversePoseidonSBox
-        };
+        use crate::crh::poseidon::parameters::mnt4753::*;
 
         // Test vectors are computed via the script in ./parameters/scripts/permutation_mnt4fr.sage
         let start_states = vec![
@@ -456,7 +610,13 @@ mod test {
         poseidon_permutation_regression_test::<MNT4753Fr, MNT4753PoseidonParameters, MNT4InversePoseidonSBox>(
             start_states, end_states
         );
-        test_routine::<MNT4753Fr, MNT4PoseidonHash>(3)
+
+        test_routine::<MNT4753Fr, MNT4PoseidonHash>(3);
+
+        algebraic_sponge_test::<MNT4PoseidonSponge, _>(
+            generate_inputs(5),
+            MNT4753Fr::new(BigInteger768([13544146296744802806, 7908858211354650162, 14951994535166234901, 11334509504536819275, 5393036988990999144, 1094186734554130330, 3575282328677220142, 7633128155120073153, 13428522056569325161, 12631412016725290776, 5311402980551155706, 458608665960265])),
+        );
     }
 
     #[cfg(feature = "mnt6_753")]
@@ -466,9 +626,7 @@ mod test {
             biginteger::BigInteger768,
             fields::mnt6753::Fr as MNT6753Fr
         };
-        use crate::crh::poseidon::parameters::mnt6753::{
-            MNT6PoseidonHash, MNT6753PoseidonParameters, MNT6InversePoseidonSBox,
-        };
+        use crate::crh::poseidon::parameters::mnt6753::*;
 
         // Test vectors are computed via the script in ./parameters/scripts/permutation_mnt6fr.sage
         let start_states = vec![
@@ -526,7 +684,13 @@ mod test {
         poseidon_permutation_regression_test::<MNT6753Fr, MNT6753PoseidonParameters, MNT6InversePoseidonSBox>(
             start_states, end_states
         );
-        test_routine::<MNT6753Fr, MNT6PoseidonHash>(3)
+
+        test_routine::<MNT6753Fr, MNT6PoseidonHash>(3);
+
+        algebraic_sponge_test::<MNT6PoseidonSponge, _>(
+            generate_inputs(5),
+            MNT6753Fr::new(BigInteger768([10962633990692460528, 17643820720120254662, 11887345461262335040, 1635544480620862670, 16754225156857933575, 11358337395045147663, 11832658263132961182, 8231799125269910032, 12720585726320405996, 13257303622939265068, 3799390656242091636, 340413977583432])),
+        );
     }
 
     #[cfg(feature = "bn_382")]
@@ -536,9 +700,7 @@ mod test {
             biginteger::BigInteger384,
             fields::bn_382::Fr as BN382Fr
         };
-        use crate::crh::poseidon::parameters::bn382::{
-            BN382FrPoseidonHash, BN382FrPoseidonParameters, BN382FrQuinticSbox
-        };
+        use crate::crh::poseidon::parameters::bn382::*;
 
         // Test vectors are computed via the script in ./parameters/scripts/permutation_bn382.sage
         let start_states = vec![
@@ -596,7 +758,13 @@ mod test {
         poseidon_permutation_regression_test::<BN382Fr, BN382FrPoseidonParameters, BN382FrQuinticSbox>(
             start_states, end_states
         );
-        test_routine::<BN382Fr, BN382FrPoseidonHash>(3)
+
+        test_routine::<BN382Fr, BN382FrPoseidonHash>(3);
+
+        algebraic_sponge_test::<BN382FrPoseidonSponge, _>(
+            generate_inputs(5),
+            BN382Fr::new(BigInteger384([17399894203864259238, 4007045366906501089, 17545770269093637261, 5193917818621677238, 7420210487642901251, 1342705544192370236])),
+        );
     }
 
     #[cfg(feature = "bn_382")]
@@ -606,9 +774,7 @@ mod test {
             biginteger::BigInteger384,
             fields::bn_382::Fq as BN382Fq
         };
-        use crate::crh::poseidon::parameters::bn382_dual::{
-            BN382FqPoseidonHash, BN382FqPoseidonParameters, BN382FqQuinticSbox
-        };
+        use crate::crh::poseidon::parameters::bn382_dual::*;
 
         // Test vectors are computed via the script in ./parameters/scripts/permutation_bn382dual.sage
         let start_states = vec![
@@ -666,7 +832,13 @@ mod test {
         poseidon_permutation_regression_test::<BN382Fq, BN382FqPoseidonParameters, BN382FqQuinticSbox>(
             start_states, end_states
         );
-        test_routine::<BN382Fq, BN382FqPoseidonHash>(3)
+
+        test_routine::<BN382Fq, BN382FqPoseidonHash>(3);
+
+        algebraic_sponge_test::<BN382FqPoseidonSponge, _>(
+            generate_inputs(5),
+            BN382Fq::new(BigInteger384([15959064864668215265, 13816425584129788685, 12271493622181146078, 17069474127486099053, 13405334476642740142, 885512544511613291])),
+        );
     }
 
     #[cfg(feature = "tweedle")]
@@ -676,9 +848,7 @@ mod test {
             biginteger::BigInteger256,
             fields::tweedle::Fr as TweedleFr
         };
-        use crate::crh::poseidon::parameters::tweedle_dee::{
-            TweedleFrPoseidonHash, TweedleFrPoseidonParameters, TweedleFrQuinticSbox
-        };
+        use crate::crh::poseidon::parameters::tweedle_dee::*;
 
         // Test vectors are computed via the script in ./parameters/scripts/permutation_deefr.sage
         let start_states = vec![
@@ -736,7 +906,13 @@ mod test {
         poseidon_permutation_regression_test::<TweedleFr, TweedleFrPoseidonParameters, TweedleFrQuinticSbox>(
             start_states, end_states
         );
-        test_routine::<TweedleFr, TweedleFrPoseidonHash>(3)
+
+        test_routine::<TweedleFr, TweedleFrPoseidonHash>(3);
+
+        algebraic_sponge_test::<TweedleFrPoseidonSponge, _>(
+            generate_inputs(5),
+            TweedleFr::new(BigInteger256([15233551142857069423, 9303942963964189230, 5678907804030780687, 4494075391231885363]))
+        );
     }
 
     #[cfg(feature = "tweedle")]
@@ -746,9 +922,7 @@ mod test {
             biginteger::BigInteger256,
             fields::tweedle::Fq as TweedleFq
         };
-        use crate::crh::poseidon::parameters::tweedle_dum::{
-            TweedleFqPoseidonHash, TweedleFqPoseidonParameters, TweedleFqQuinticSbox
-        };
+        use crate::crh::poseidon::parameters::tweedle_dum::*;
 
         // Test vectors are computed via the script in ./parameters/scripts/permutation_dumfr.sage
         let start_states = vec![
@@ -808,6 +982,12 @@ mod test {
         poseidon_permutation_regression_test::<TweedleFq, TweedleFqPoseidonParameters, TweedleFqQuinticSbox>(
             start_states, end_states
         );
-        test_routine::<TweedleFq, TweedleFqPoseidonHash>(3)
+
+        test_routine::<TweedleFq, TweedleFqPoseidonHash>(3);
+
+        algebraic_sponge_test::<TweedleFqPoseidonSponge, _>(
+            generate_inputs(5),
+            TweedleFq::new(BigInteger256([11557783106681101617, 2593010066634388402, 10088470809303411243, 2587243196877625354]))
+        );
     }
 }

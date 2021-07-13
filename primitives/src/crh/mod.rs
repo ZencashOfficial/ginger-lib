@@ -162,8 +162,9 @@ mod test {
     };
 
     use rand_xorshift::XorShiftRng;
-    use rand::SeedableRng;
-    use crate::{FieldBasedHash, FieldBasedHashParameters};
+    use rand::{SeedableRng, thread_rng};
+    use crate::{FieldBasedHash, FieldBasedHashParameters, AlgebraicSponge};
+    use std::collections::HashSet;
 
     struct DummyMNT4BatchPoseidonHash;
 
@@ -231,6 +232,70 @@ mod test {
             padded_inputs.into_iter().for_each(|fe| { digest.update(fe); });
             assert_ne!(output, digest.finalize().unwrap(), "Incorrect padding: collision detected");
         }
+    }
+
+    pub(crate) fn algebraic_sponge_test<H: AlgebraicSponge<F>, F: PrimeField>(
+        to_absorb: Vec<F>,
+        expected_squeeze: F
+    )
+    {
+        let mut sponge = H::init();
+
+        // Absorb all field elements
+        sponge.absorb(to_absorb);
+
+        // Squeeze and check the output
+        assert_eq!(expected_squeeze, sponge.squeeze(1)[0]);
+
+        // Check that calling squeeze() multiple times without absorbing
+        // changes the output
+        let mut prev = expected_squeeze;
+        for _ in 0..100 {
+            let curr = sponge.squeeze(1)[0];
+            assert!(prev != curr);
+            prev = curr;
+        }
+
+        let rng = &mut thread_rng();
+
+        // Check squeeze() outputs the correct number of field elements
+        // all different from each others
+        let mut set = HashSet::new();
+        for i in 0..=10 {
+            sponge.absorb((0..i).map(|_| F::rand(rng)).collect::<Vec<_>>());
+            let outs = sponge.squeeze(i);
+            assert_eq!(i, outs.len());
+
+            // HashSet::insert(val) returns false if val was already present, so to check
+            // that all the elements output by the sponge are different, we assert insert()
+            // returning always true
+            outs.into_iter().for_each(|f| assert!(set.insert(f)));
+        }
+
+        //Test edge cases. Assumption: R = 2
+        sponge.reset();
+
+        // Absorb nothing. Check that the internal state is not changed.
+        let prev_state = sponge.get_state().to_vec();
+        sponge.absorb(vec![]);
+        assert_eq!(prev_state, sponge.get_state());
+
+        // Squeeze nothing. Check that the internal state is not changed.
+        let prev_state = sponge.get_state().to_vec();
+        sponge.squeeze(0);
+        assert_eq!(prev_state, sponge.get_state());
+
+        // Absorb up to rate elements and trigger a permutation. Assert that calling squeeze()
+        // afterwards won't trigger another permutation.
+        sponge.absorb((0..2).map(|_| F::rand(rng)).collect::<Vec<_>>());
+        let prev_state = sponge.get_state().to_vec();
+        sponge.squeeze(1);
+        let curr_state = sponge.get_state().to_vec();
+        assert_eq!(prev_state, curr_state);
+
+        // The next squeeze() should instead change the state
+        sponge.squeeze(1);
+        assert!(curr_state != sponge.get_state());
     }
 
     #[ignore]

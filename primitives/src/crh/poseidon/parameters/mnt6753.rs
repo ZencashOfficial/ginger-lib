@@ -1,7 +1,7 @@
 use crate::crh::{
     PoseidonParameters, PoseidonShortParameters,
     FieldBasedHashParameters, PoseidonHash, batched_crh::PoseidonBatchHash,
-    PoseidonInverseSBox,
+    PoseidonInverseSBox, PoseidonSponge
 };
 
 use algebra::{
@@ -23,6 +23,7 @@ pub struct MNT6753PoseidonParameters;
 pub type MNT6InversePoseidonSBox = PoseidonInverseSBox<Fr, MNT6753PoseidonParameters>;
 pub type MNT6PoseidonHash = PoseidonHash<Fr, MNT6753PoseidonParameters, MNT6InversePoseidonSBox>;
 pub type MNT6BatchPoseidonHash = PoseidonBatchHash<Fr, MNT6753PoseidonParameters, MNT6InversePoseidonSBox>;
+pub type MNT6PoseidonSponge = PoseidonSponge<Fr, MNT6753PoseidonParameters, MNT6InversePoseidonSBox>;
 
 impl FieldBasedHashParameters for MNT6753PoseidonParameters {
     type Fr = Fr;

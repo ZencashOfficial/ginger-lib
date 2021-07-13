@@ -21,7 +21,7 @@ pub trait SBoxGadget<ConstraintF: PrimeField, SB: SBox<Field = ConstraintF>> {
 
 pub struct InverseSBoxGadget<ConstraintF: PrimeField, SB: SBox<Field = ConstraintF>> {
     _field: PhantomData<ConstraintF>,
-    _sbox: PhantomData<SB>,
+    _sbox:  PhantomData<SB>,
 }
 
 impl<ConstraintF: PrimeField, SB: SBox<Field = ConstraintF>> SBoxGadget<ConstraintF, SB> for InverseSBoxGadget<ConstraintF, SB> {

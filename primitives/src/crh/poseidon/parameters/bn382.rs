@@ -1,7 +1,7 @@
 use crate::crh::{
     PoseidonParameters,
     FieldBasedHashParameters, PoseidonHash, batched_crh::PoseidonBatchHash,
-    PoseidonQuinticSBox,
+    PoseidonQuinticSBox, PoseidonSponge
 };
 use algebra::fields::bn_382::Fr;
 
@@ -251,3 +251,5 @@ impl PoseidonParameters for BN382FrPoseidonParameters {
 pub type BN382FrQuinticSbox = PoseidonQuinticSBox<Fr, BN382FrPoseidonParameters>;
 pub type BN382FrPoseidonHash = PoseidonHash<Fr, BN382FrPoseidonParameters, BN382FrQuinticSbox>;
 pub type BN382FrBatchPoseidonHash = PoseidonBatchHash<Fr, BN382FrPoseidonParameters, BN382FrQuinticSbox>;
+pub type BN382FrPoseidonSponge = PoseidonSponge<Fr, BN382FrPoseidonParameters, BN382FrQuinticSbox>;
+

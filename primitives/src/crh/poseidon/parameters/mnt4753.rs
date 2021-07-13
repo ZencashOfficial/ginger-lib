@@ -1,7 +1,7 @@
 use crate::crh::{
     PoseidonParameters, PoseidonShortParameters,
     FieldBasedHashParameters, PoseidonHash, batched_crh::PoseidonBatchHash,
-    PoseidonInverseSBox,
+    PoseidonInverseSBox, PoseidonSponge
 };
 
 use algebra::{
@@ -14,6 +14,7 @@ use algebra::{
 pub type MNT4InversePoseidonSBox = PoseidonInverseSBox<Fr, MNT4753PoseidonParameters>;
 pub type MNT4PoseidonHash = PoseidonHash<Fr, MNT4753PoseidonParameters, MNT4InversePoseidonSBox>;
 pub type MNT4BatchPoseidonHash = PoseidonBatchHash<Fr, MNT4753PoseidonParameters, MNT4InversePoseidonSBox>;
+pub type MNT4PoseidonSponge = PoseidonSponge<Fr, MNT4753PoseidonParameters, MNT4InversePoseidonSBox>;
 
 #[derive(Debug, Clone)]
 /// x^{-1}-POSEIDON-128 parameters for scalar field Fr of MNT4-753, with an MDS matrix supporting

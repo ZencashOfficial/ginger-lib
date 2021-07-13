@@ -5,7 +5,7 @@ use primitives::crh::parameters::{
 };
 use crate::crh::{
     sbox::QuinticSBoxGadget,
-    poseidon::PoseidonHashGadget,
+    poseidon::{PoseidonHashGadget, PoseidonSpongeGadget}
 };
 
 type TweedleFqQuinticSboxGadget = QuinticSBoxGadget<Fq, TweedleFqQuinticSbox>;
@@ -15,9 +15,21 @@ pub type TweedleFqPoseidonHashGadget = PoseidonHashGadget<
     TweedleFqQuinticSbox,
     TweedleFqQuinticSboxGadget
 >;
+pub type TweedleFqPoseidonSpongeGadget = PoseidonSpongeGadget<
+    Fq,
+    TweedleFqPoseidonParameters,
+    TweedleFqQuinticSbox,
+    TweedleFqQuinticSboxGadget
+>;
 
 type TweedleFrQuinticSboxGadget = QuinticSBoxGadget<Fr, TweedleFrQuinticSbox>;
 pub type TweedleFrPoseidonHashGadget = PoseidonHashGadget<
+    Fr,
+    TweedleFrPoseidonParameters,
+    TweedleFrQuinticSbox,
+    TweedleFrQuinticSboxGadget
+>;
+pub type TweedleFrPoseidonSpongeGadget = PoseidonSpongeGadget<
     Fr,
     TweedleFrPoseidonParameters,
     TweedleFrQuinticSbox,

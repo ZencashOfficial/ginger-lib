@@ -1,7 +1,7 @@
 use crate::crh::{
     PoseidonParameters,
     FieldBasedHashParameters, PoseidonHash, batched_crh::PoseidonBatchHash,
-    PoseidonQuinticSBox,
+    PoseidonQuinticSBox, PoseidonSponge
 };
 use algebra::fields::tweedle::Fr;
 
@@ -258,3 +258,4 @@ impl PoseidonParameters for TweedleFrPoseidonParameters {
 pub type TweedleFrQuinticSbox = PoseidonQuinticSBox<Fr, TweedleFrPoseidonParameters>;
 pub type TweedleFrPoseidonHash = PoseidonHash<Fr, TweedleFrPoseidonParameters, TweedleFrQuinticSbox>;
 pub type TweedleFrBatchPoseidonHash = PoseidonBatchHash<Fr, TweedleFrPoseidonParameters, TweedleFrQuinticSbox>;
+pub type TweedleFrPoseidonSponge = PoseidonSponge<Fr, TweedleFrPoseidonParameters, TweedleFrQuinticSbox>;
