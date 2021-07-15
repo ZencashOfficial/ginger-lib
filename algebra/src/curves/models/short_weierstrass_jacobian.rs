@@ -169,6 +169,10 @@ impl<P: Parameters> AffineCurve for GroupAffine<P> {
         self.infinity
     }
 
+    fn get_coordinates(&self) -> Vec<Self::BaseField> {
+        vec![self.x, self.y]
+    }
+
     #[inline]
     fn group_membership_test(&self) -> bool {
         self.is_on_curve() && if !self.is_zero() {
@@ -541,6 +545,10 @@ impl<P: Parameters> ProjectiveCurve for GroupProjective<P> {
     #[inline]
     fn is_zero(&self) -> bool {
         self.z.is_zero()
+    }
+
+    fn get_coordinates(&self) -> Vec<Self::BaseField> {
+        vec![self.x, self.y, self.z]
     }
 
     #[inline]

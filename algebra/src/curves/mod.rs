@@ -172,6 +172,9 @@ pub trait ProjectiveCurve:
     #[must_use]
     fn is_zero(&self) -> bool;
 
+    /// Get the coordinates of this point.
+    fn get_coordinates(&self) -> Vec<Self::BaseField>;
+
     /// Checks that the current point is on curve and is in the
     /// prime order subgroup
     #[must_use]
@@ -265,6 +268,9 @@ pub trait AffineCurve:
     /// additive identity.
     #[must_use]
     fn is_zero(&self) -> bool;
+
+    /// Get the coordinates of this point.
+    fn get_coordinates(&self) -> Vec<Self::BaseField>;
 
     /// Returns a group element if the set of bytes forms a valid group element,
     /// otherwise returns None. This function is primarily intended for sampling

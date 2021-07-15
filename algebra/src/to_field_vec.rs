@@ -26,6 +26,22 @@ impl<F: PrimeField> ToConstraintField<F> for F {
     }
 }
 
+impl<'a, F: PrimeField, T: ToConstraintField<F>> ToConstraintField<F> for &'a [T] {
+    fn to_field_elements(&self) -> Result<Vec<F>, Error> {
+        let mut fes = Vec::with_capacity(self.len());
+        for elem in self.iter() {
+            fes.append(&mut elem.to_field_elements()?);
+        }
+        Ok(fes)
+    }
+}
+
+impl<F: PrimeField, T: ToConstraintField<F>> ToConstraintField<F> for Vec<T> {
+    fn to_field_elements(&self) -> Result<Vec<F>, Error> {
+        self.as_slice().to_field_elements()
+    }
+}
+
 // Impl for base field
 impl<F: Field> ToConstraintField<F> for [F] {
     #[inline]

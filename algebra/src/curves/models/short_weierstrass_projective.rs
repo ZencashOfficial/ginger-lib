@@ -163,6 +163,10 @@ impl<P: Parameters> AffineCurve for GroupAffine<P> {
         )
     }
 
+    fn get_coordinates(&self) -> Vec<Self::BaseField> {
+        vec![self.x, self.y]
+    }
+
     fn from_random_bytes(bytes: &[u8]) -> Option<Self> {
         P::BaseField::from_random_bytes_with_flags::<SWFlags>(bytes).and_then(|(x, flags)| {
             // if x is valid and is zero and only the infinity flag is set, then parse this
@@ -548,6 +552,10 @@ impl<P: Parameters> ProjectiveCurve for GroupProjective<P> {
     #[inline]
     fn is_zero(&self) -> bool {
         self.z.is_zero()
+    }
+
+    fn get_coordinates(&self) -> Vec<Self::BaseField> {
+        vec![self.x, self.y, self.z]
     }
 
     #[inline]
